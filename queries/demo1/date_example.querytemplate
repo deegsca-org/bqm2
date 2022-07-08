@@ -1,0 +1,2 @@
+#standardSQL
+select 1 col 

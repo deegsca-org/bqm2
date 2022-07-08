@@ -1,0 +1,5 @@
+#standardSQL
+
+select source, sum(safe_cast(reach as INT64)) as reach_sum
+from {project}.{dataset}.{table}
+group by 1

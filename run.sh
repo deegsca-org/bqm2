@@ -14,11 +14,11 @@ docker build -t $imagename:$current_commit .
 #fi
 #echo "SRC: $SRC_DIR"
 
-if [[ ! -f ~/.aws/mfa ]]
-then
-    echo Please make you have a valid mfa credentials file
-    exit 1
-fi
+#if [[ ! -f ~/.aws/mfa ]]
+#then
+#    echo Please make you have a valid mfa credentials file
+#    exit 1
+#fi
 #SECRET=${SECRET:-k8app__bq-third-party__staging__bqm2-json__gcloud-private-key}
 # get creds
 #mkdir -p /tmp/creds
@@ -32,7 +32,7 @@ fi
 
 docker run -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud-private-key \
 -e AWS_SHARED_CREDENTIALS_FILE=/root/.aws/mfa \
--v ~/Downloads/eyeota-test-37d40f8af2b4.json:/gcloud-private-key \
+-v ~/dev/creds/eyeota-test-37d40f8af2b4.json:/gcloud-private-key \
 -v ~/.vimrc:/root/.vimrc \
 --name bqm2 -v ~/.config:/root/.config \
 -v $(pwd)/python:/python \
