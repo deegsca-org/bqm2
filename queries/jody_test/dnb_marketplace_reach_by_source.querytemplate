@@ -1,5 +1,5 @@
 #standardSQL
 
 select source, sum(safe_cast(reach as INT64)) as reach_sum
-from {project}.{dataset}.{table}
+from {project}.{dataset}.marketplace_reach_dump
 group by 1
