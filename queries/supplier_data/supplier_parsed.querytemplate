@@ -1,0 +1,25 @@
+#standardSQL
+
+CREATE TEMP FUNCTION parse(row STRING)
+  RETURNS STRUCT<{type} string, iso string,
+                 segments array<string>>
+  LANGUAGE js AS
+"""
+    arr = row.replaceAll('"', '').replaceAll(",", "|").replaceAll("\t", "|").split("|")
+    
+    this.{type} = arr[0]
+    this.iso = arr[1]
+
+    this.segments = arr.slice(2, arr.length)
+    return this;
+""";
+
+with src as (
+  SELECT * FROM {dataset}.{rawtable}
+),
+
+parts as (
+SELECT parse(row) p FROM src
+)
+
+select p.* from parts

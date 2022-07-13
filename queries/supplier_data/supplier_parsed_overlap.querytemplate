@@ -1,0 +1,18 @@
+#standardSQL
+
+with uniqued as (
+select * from (
+  SELECT ios id, 'ios' as tag  FROM {ios_table}
+  union all 
+  SELECT android id, 'android' as tag  FROM {android_table}
+) group by 1, 2
+)
+
+select '{table_source}' source, uniques/sum(uniques) over () pct, * from (
+select array_to_string(array(select x from unnest(tags) x order by x), " ") tags, count(1) uniques from (
+select id, array_agg(tag) tags from uniqued
+group by uniqued.id
+)
+group by 1
+)
+
