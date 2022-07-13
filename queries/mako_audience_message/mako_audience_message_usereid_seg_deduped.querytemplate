@@ -1,0 +1,12 @@
+#standardSQL
+
+with segments as (
+SELECT count(1) entries, UserEid
+, array_concat_agg(map.SegmentEids) SegmentEids
+FROM `eyeota-test.reporting_data_orc_s3_eyeota_net.mako_audience_message_{yyyymmdd}`,
+unnest(ProvidersSegmentsInfo.Segments) map
+where ProvidersSegmentsInfo is not null
+group by 2
+)
+
+select UserEid, array(select x from unnest(SegmentEids) x group by x order by x) SegmentEids, entries from segments
