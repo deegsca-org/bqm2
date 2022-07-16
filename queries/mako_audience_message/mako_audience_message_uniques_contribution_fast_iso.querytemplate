@@ -1,0 +1,20 @@
+#standardSQL
+
+with input as (
+  select * from `eyeota-test.reporting_data_orc_s3_eyeota_net.mako_audience_message_20220619`
+),
+segments as (
+SELECT Location.MaxmindCountry iso, UserEid
+, array_concat_agg(map.SegmentEids) SegmentEids
+FROM input,
+unnest(ProvidersSegmentsInfo.Segments) map
+where ProvidersSegmentsInfo is not null
+group by 1, 2
+)
+
+select uniques/sum(uniques) over () pct, uniques, iso, split(SegmentEids, " ") SegmentEids from (
+select SegmentEids, iso, count(1) uniques from (
+  select UserEid, iso, array_to_string(array(select cast(x as string) from unnest(SegmentEids) x group by x order by x), " ") SegmentEids from segments
+)
+group by 1, 2
+)
