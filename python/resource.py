@@ -891,6 +891,8 @@ def processExtractTableOptions(options: dict):
     compressions = {
         "GZIP": Compression.GZIP,
         "NONE": Compression.NONE,
+        "SNAPPY": Compression.SNAPPY,
+        "DEFLATE": Compression.DEFLATE
     }
 
     job_config = bigquery.job.ExtractJobConfig()
@@ -905,7 +907,8 @@ def processExtractTableOptions(options: dict):
     formats = {
         "NEWLINE_DELIMITED_JSON": DestinationFormat.NEWLINE_DELIMITED_JSON,
         "CSV": DestinationFormat.CSV,
-        "AVRO": DestinationFormat.AVRO
+        "AVRO": DestinationFormat.AVRO,
+        "PARQUET": "PARQUET"
     }
 
     if "destination_format" in options:
@@ -1043,9 +1046,12 @@ def gcsExists(gcsClient, uris):
 
 def gcsUris(gcsClient, uris):
     (bucket, prefix) = parseBucketAndPrefix(uris)
-    prefix = prefix.replace("*.gz", "")
+    parts = prefix.split('*')
+    if len(parts) != 2: raise Exception(f"The extract url must only contain a single * char and provide file suffix info: f{str(uris)}")
+   
+    args = {'prefix': parts[0], 'delimiter':'/'}
+
     bucket = gcsClient.get_bucket(bucket)
-    objs = [x for x in bucket.list_blobs(prefix=prefix,
-                                         delimiter="/")]
+    objs = [x for x in bucket.list_blobs(**args) if x.name.endswith(parts[1])]
 
     return objs
