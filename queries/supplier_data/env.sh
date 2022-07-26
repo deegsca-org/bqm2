@@ -1,2 +1,2 @@
 PROJECT=eyeota-test
-DEFAULT_DATASET=profile_uploader_s3_eyeota_net
+DEFAULT_DATASET=profile_uploader_s3_eyeota_net_us

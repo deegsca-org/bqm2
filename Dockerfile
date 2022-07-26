@@ -18,8 +18,8 @@ FROM python:3.6
 
 RUN apt-get install -y g++
 RUN pip install --upgrade pip
-ADD /python /python
-RUN pip install -r /python/requirements.txt
+ADD /requirements.txt /
+RUN pip install -r /requirements.txt
 ENV PYTHONPATH /python
 RUN apt-get update
 RUN apt-get install -y vim jq unzip
@@ -34,5 +34,6 @@ RUN apt-get install apt-transport-https ca-certificates -y
 RUN apt-get update -y
 RUN apt-get install google-cloud-sdk -y
 
+ADD /python /python
 ADD /test /test
 RUN /test/test.sh
