@@ -1047,9 +1047,12 @@ def gcsExists(gcsClient, uris):
 def gcsUris(gcsClient, uris):
     (bucket, prefix) = parseBucketAndPrefix(uris)
     parts = prefix.split('*')
-    if len(parts) != 2: raise Exception(f"The extract url must only contain a single * char and provide file suffix info: f{str(uris)}")
-   
-    args = {'prefix': parts[0], 'delimiter':'/'}
+    if len(parts) != 2:
+        raise Exception(f"The extract url must only contain " +
+                        "a single * char and provide file " +
+                        "suffix info: f{str(uris)}")
+
+    args = {'prefix': parts[0], 'delimiter': '/'}
 
     bucket = gcsClient.get_bucket(bucket)
     objs = [x for x in bucket.list_blobs(**args) if x.name.endswith(parts[1])]

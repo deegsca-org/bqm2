@@ -15,7 +15,7 @@ CREATE TEMP FUNCTION parse(row STRING)
 """;
 
 with src as (
-  SELECT * FROM {dataset}.{rawtable}
+  SELECT * FROM {dataset}.{supplier}_{type}
 ),
 
 parts as (
