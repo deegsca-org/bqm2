@@ -7,7 +7,7 @@ CREATE TEMP FUNCTION parse(row STRING)
 """
     arr = row.replaceAll('"', '').replaceAll(",", "|").replaceAll("\t", "|").split("|")
     
-    this.{type} = arr[0]
+    this.{type} = arr[0].toUpperCase()
     this.iso = arr[1]
 
     this.segments = arr.slice(2, arr.length)
