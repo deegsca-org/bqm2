@@ -1,0 +1,4 @@
+#standardSQL
+
+select '{supplier}' supplier, {type} from {dataset}.{supplier}_{type}_parsed
+
