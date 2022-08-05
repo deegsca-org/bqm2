@@ -285,8 +285,8 @@ class BqQueryTemplatingFileLoader(FileLoader):
                 raise Exception("source_format not found in template vars")
 
             if templateVars["source_format"] not in set(["PARQUET", "ORC"]):
-                schemaFileStr = self.cached_file_read(filePath + ".schema").strip()
-                schema = loadSchemaFromString(schemaFileStr)
+                schemaFileStr = self.cached_file_read(filePath + ".schema")
+                schema = loadSchemaFromString(schemaFileStr.strip())
                 templateVars["schema"] = schema
 
             rsrc = BqGcsTableLoadResource(bqTable,
