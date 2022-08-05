@@ -1,0 +1,14 @@
+#standardSQL
+
+with src as (
+  select * except(suppliers), split(suppliers) suppliers from {dataset}.supplier_inter_overlap_nway_overlap_{type}
+),
+
+u as (
+  select supplier from src, unnest(suppliers) supplier
+  group by 1
+)
+
+select supplier, sum(pct) pct, sum(uniques) uniques from u cross join src
+where (select count(1) from unnest(suppliers) s where supplier = s) = 1
+group by 1

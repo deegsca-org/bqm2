@@ -1,0 +1,75 @@
+[
+  {
+    "name": "segment",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "seg",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+          {
+            "name": "segmentTTL",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "segmentId",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "ignored",
+            "type": "BOOLEAN",
+            "mode": "NULLABLE"
+          }
+        ]
+      },
+      {
+        "name": "vals",
+        "type": "STRING",
+        "mode": "REPEATED"
+      }
+    ]
+  },
+  {
+    "name": "custom_segment",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "seg",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+          {
+            "name": "segmentTTL",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "segmentId",
+            "type": "INTEGER",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "ignored",
+            "type": "BOOLEAN",
+            "mode": "NULLABLE"
+          }
+        ]
+      },
+      {
+        "name": "vals",
+        "type": "STRING",
+        "mode": "REPEATED"
+      }
+    ]
+  },
+  {
+    "name": "pid",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  }
+]
