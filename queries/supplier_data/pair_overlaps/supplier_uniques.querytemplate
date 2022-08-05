@@ -1,14 +1,20 @@
 #standardSQL
 
 with src as (
-  select * except(suppliers), split(suppliers) suppliers from {dataset}.supplier_inter_overlap_nway_overlap_{type}
+  select * from {dataset}.supplier_inter_overlap_nway_overlap_{type}
 ),
 
 u as (
-  select supplier from src, unnest(suppliers) supplier
-  group by 1
+  select uniques, pct, supplier from src, unnest(split(suppliers, " ")) supplier
 )
 
-select supplier, sum(pct) pct, sum(uniques) uniques from u cross join src
-where (select count(1) from unnest(suppliers) s where supplier = s) = 1
-group by 1
+select * from (
+select supplier, sum(uniques) {type}_shared_uniques, sum(pct) {type}_shared_pct from u
+group by supplier
+order by 2 desc)
+left join (
+  select suppliers supplier, uniques {type}_sole_contributor_uniques, pct {type}_sole_contributor_pct from src
+  where array_length(split(src.suppliers, " ")) = 1
+) using (supplier)
+
+order by {type}_sole_contributor_uniques desc
