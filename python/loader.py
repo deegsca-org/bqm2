@@ -167,6 +167,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
         self.bqJobs = bqJobs
         self.datasets = {}
         self.tableType = tableType
+        self.cachedFileLoads = {}
         if not self.tableType or self.tableType not in TableType:
             raise Exception("TableType must be set")
 
@@ -193,6 +194,15 @@ class BqQueryTemplatingFileLoader(FileLoader):
             ret += [evalTmplRecurse(t) for t in explodeTemplate(copy)]
 
         return ret
+
+    def cached_file_read(self, file):
+        if file in self.cachedFileLoads:
+            return self.cachedFileLoads[file]
+        else:
+            with open(file) as filestr:
+                filestr = filestr.read()
+            self.cachedFileLoads[file] = filestr
+            return filestr
 
     def processTemplateVar(self, templateVars: dict, template: str,
                            filePath: str, mtime: int, out: dict):
@@ -275,9 +285,9 @@ class BqQueryTemplatingFileLoader(FileLoader):
                 raise Exception("source_format not found in template vars")
 
             if templateVars["source_format"] not in set(["PARQUET", "ORC"]):
-                with open(filePath + ".schema") as schemaFile:
-                    schema = loadSchemaFromString(schemaFile.read().strip())
-                    templateVars["schema"] = schema
+                schemaFileStr = self.cached_file_read(filePath + ".schema").strip()
+                schema = loadSchemaFromString(schemaFileStr)
+                templateVars["schema"] = schema
 
             rsrc = BqGcsTableLoadResource(bqTable,
                                           self.bqClient,
