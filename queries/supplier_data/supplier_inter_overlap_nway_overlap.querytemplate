@@ -1,9 +1,0 @@
-#standardSQL
-
-select suppliers, count(1) uniques, count(1)/sum(count(1)) over () pct from (
-select {type}, array_to_string(array_agg(supplier order by supplier), " ") suppliers from (
-select {type}, supplier from {dataset}.supplier_inter_overlap_{type}
-group by 1, 2)
-group by 1)
-group by 1
-order by pct desc

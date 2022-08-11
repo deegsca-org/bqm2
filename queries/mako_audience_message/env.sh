@@ -1,2 +1,0 @@
-PROJECT=eyeota-test
-DEFAULT_DATASET=reporting_data_orc_s3_eyeota_net

@@ -1,3 +1,0 @@
-#standardSQL
-
-select * from {overlap_table}
