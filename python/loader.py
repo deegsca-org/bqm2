@@ -318,8 +318,9 @@ class BqQueryTemplatingFileLoader(FileLoader):
 
         elif self.tableType == TableType.BASH_TABLE:
             jT = self.bqJobs.getJobForTable(bqTable)
-            with open(filePath + ".schema") as schemaFile:
-                schema = loadSchemaFromString(schemaFile.read().strip())
+            schema = self.cached_file_read(filePath + ".schema")
+            # with open(filePath + ".schema") as schemaFile:
+            #     schema = loadSchemaFromString(schemaFile.read().strip())
             arsrc = BqProcessTableResource(query, bqTable, schema,
                                            self.bqClient,
                                            job=jT)
