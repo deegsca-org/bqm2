@@ -377,7 +377,6 @@ class BqProcessTableResource(BqTableBasedResource):
             source_format=srcFormat,
             field_delimiter=fieldDelimiter, ignore_unknown_values=True,
             write_disposition=WriteDisposition.WRITE_TRUNCATE,
-            #job_name=str(uuid.uuid4()),
             schema=self.schema)
 
         with open(datascript, "rb") as source_file:
