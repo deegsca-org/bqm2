@@ -1,6 +1,5 @@
 # bqm2
 
-
 # todo
 - add materialized view support
 - add create table as support
