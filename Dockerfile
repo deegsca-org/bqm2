@@ -4,7 +4,7 @@
 #FROM docker.io/stops/go-sharethis:989d79a0b6 as go-sharethis
 
 
-FROM python:3.6
+FROM python:3.7
 # /go-cloud-copy is a utility for sending receiving and sending messages from 
 # either stdin, stdout, or sqs queues. all combinations are supported.
 # we may start using it in bqm2 for send sqs messages to get data into gcs
