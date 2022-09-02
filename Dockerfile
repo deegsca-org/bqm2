@@ -33,9 +33,6 @@ RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyri
 RUN apt-get install apt-transport-https ca-certificates -y
 RUN apt-get update -y
 RUN apt-get install google-cloud-sdk -y
-RUN pip install pysftp
-RUN pip install google-cloud-secret-manager
-RUN pip install --upgrade google-cloud-pubsub
 
 ADD /python /python
 ADD /test /test
