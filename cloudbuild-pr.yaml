@@ -9,13 +9,10 @@ steps:
 
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
-  args: ['secrets', 'versions', 'access', 'latest', '--secret=id-graph-plus', '--out-file=/tmp/secret']
+  args: ['secrets', 'versions', 'access', 'latest', '--secret=id-graph-plus', '--out-file=/workspace/secret']
 
-- name: gcr.io/$PROJECT_ID/bqm2:latest
-  args: ["run",
-        "-i",
-        "-v", "/tmp/secret:/gcloud-private-key",
-        "-e", "GOOGLE_APPLICATION_CREDENTIALS=/gcloud-private-key",
-        "gcr.io/$PROJECT_ID/bqm2:latest",
-        "bash", "/int-test/test-basic.sh"
-        ]
+- name: gcr.io/cloud-builders/docker
+  args: |
+        run -i -v /workspace/secret:/gcloud-private-key
+        -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud-private-key
+        gcr.io/$PROJECT_ID/bqm2:latest bash /int-test/test-basic.sh
