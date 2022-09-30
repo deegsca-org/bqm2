@@ -1,20 +1,4 @@
-#FROM docker.io/stops/tf-muse-v3-lg:245d9bf016 as tf-muse
-
-#FROM docker.io/stops/go-cloud-copy:98d373f20f as go-cloud-copy
-#FROM docker.io/stops/go-sharethis:989d79a0b6 as go-sharethis
-
-
 FROM python:3.7
-# /go-cloud-copy is a utility for sending receiving and sending messages from 
-# either stdin, stdout, or sqs queues. all combinations are supported.
-# we may start using it in bqm2 for send sqs messages to get data into gcs
-#COPY --from=go-cloud-copy /go-cloud-copy /go-cloud-copy
-
-# this is used to generate embeddings within bqm2 apps if needed.  See bq-customer-filters app
-#COPY --from=tf-muse /app/models/muse/004/ /app/models/muse/004/
-
-# we include an encrypt/decrypt utility for hems
-#COPY --from=go-sharethis /bin/crypt-util/main /go-sharethis/bin/crypt-util/main
 
 RUN apt-get install -y g++
 RUN pip install --upgrade pip

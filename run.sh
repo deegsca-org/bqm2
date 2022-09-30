@@ -17,10 +17,10 @@ fi
 echo mounting ${QUERIES} to ${MOUNT}
 docker run -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud-private-key \
 -e AWS_SHARED_CREDENTIALS_FILE=/root/.aws/mfa \
--v ~/Downloads/eyeota-test-37d40f8af2b4.json:/gcloud-private-key \
+-v ${GOOGLE_APPLICATION_SERVICE_ACCOUNT}:/gcloud-private-key \
 -v ~/.vimrc:/root/.vimrc \
 -v ${QUERIES}:${MOUNT} \
---name bqm2 -v ~/.config:/root/.config \
+--name bqm2 \
 -v $(pwd)/python:/python \
 -v $(pwd)/test:/test \
 -v $(pwd)/int-test:/int-test \
