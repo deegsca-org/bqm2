@@ -14,7 +14,7 @@ steps:
 - name: gcr.io/cloud-builders/docker
   args: ["run",
         "-i", "-v", "/workspace/secret:/gcloud-private-key",
-        "-e GOOGLE_APPLICATION_CREDENTIALS=/gcloud-private-key",
+        "-e", "GOOGLE_APPLICATION_CREDENTIALS=/gcloud-private-key",
         "gcr.io/$PROJECT_ID/bqm2:latest",
         "bash",
         "/int-test/test-basic.sh"]
