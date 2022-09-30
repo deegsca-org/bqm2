@@ -9,7 +9,7 @@ steps:
 
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
-  args: ['secrets', 'versions', 'access', 'latest', '--secret=id-graph-plus', '--out-file=/workspace/secret']
+  args: ['secrets', 'versions', 'access', 'latest', '--secret=bqm2-int-test', '--out-file=/workspace/secret']
 
 - name: gcr.io/cloud-builders/docker
   args: ["run",
