@@ -20,4 +20,5 @@ RUN apt-get install google-cloud-sdk -y
 
 ADD /python /python
 ADD /test /test
+ADD /int-test /int-test
 RUN /test/test.sh
