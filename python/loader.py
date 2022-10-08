@@ -10,6 +10,7 @@ from google.cloud import storage
 from google.cloud.exceptions import NotFound
 
 import tmplhelper
+from resource import BqExternalTableBasedResource
 from resource import Resource, _buildDataSetKey_, BqDatasetBackedResource, \
     BqJobs, BqQueryBackedTableResource, _buildDataSetTableKey_, \
     BqViewBackedTableResource, BqDataLoadTableResource, \
@@ -125,6 +126,7 @@ class TableType(Enum):
     UNION_TABLE = 5
     UNION_VIEW = 6
     BASH_TABLE = 7
+    EXTERNAL_TABLE = 8
 
 
 class BqQueryTemplatingFileLoader(FileLoader):
@@ -325,6 +327,15 @@ class BqQueryTemplatingFileLoader(FileLoader):
             arsrc = BqProcessTableResource(query, bqTable, schema,
                                            self.bqClient,
                                            job=jT)
+            out[key] = arsrc
+        elif self.tableType == TableType.EXTERNAL_TABLE:
+
+            # stripped = self.cached_file_read(filePath + ".schema").strip()
+            # schema = loadSchemaFromString(stripped)
+            import google.cloud.bigquery
+            # query here is actually json
+            extconfig = google.cloud.bigquery.ExternalConfig.from_api_repr(json.loads(query))
+            arsrc = BqExternalTableBasedResource(bqTable, self.bqClient, extconfig)
             out[key] = arsrc
 
         dsetKey = _buildDataSetKey_(bqTable)

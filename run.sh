@@ -7,7 +7,7 @@ cd $(dirname $0)
 
 . env.sh
 
-docker build -t $imagename:$current_commit .
+docker build --platform linux/amd64 -t $imagename:$current_commit .
 
 if [[ ! -f ~/.vimrc ]]
 then
@@ -15,7 +15,7 @@ then
 fi
 
 echo mounting ${QUERIES} to ${MOUNT}
-docker run -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud-private-key \
+docker run --platform linux/amd64 -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud-private-key \
 -e AWS_SHARED_CREDENTIALS_FILE=/root/.aws/mfa \
 -v ${GOOGLE_APPLICATION_SERVICE_ACCOUNT}:/gcloud-private-key \
 -v ~/.vimrc:/root/.vimrc \

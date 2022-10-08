@@ -310,7 +310,12 @@ if __name__ == "__main__":
             bashtemplate=BqQueryTemplatingFileLoader(loadClient, gcsClient,
                                                      bqJobs,
                                                      TableType.BASH_TABLE,
-                                                     kwargs)))
+                                                     kwargs),
+            externaltable=BqQueryTemplatingFileLoader(loadClient, gcsClient,
+                                                      bqJobs,
+                                                      TableType.EXTERNAL_TABLE,
+                                                      kwargs))
+    )
 
     (resources, dependencies) = builder.buildDepend(args)
     executor = DependencyExecutor(resources, dependencies,

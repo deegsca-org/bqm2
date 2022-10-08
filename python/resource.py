@@ -9,6 +9,7 @@ from json.decoder import JSONDecodeError
 
 from google.cloud import bigquery
 from google.cloud import storage
+from google.cloud.bigquery import ExternalConfig
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.dataset import Dataset
 from google.cloud.bigquery.job import WriteDisposition, \
@@ -1057,3 +1058,42 @@ def gcsUris(gcsClient, uris):
     objs = [x for x in bucket.list_blobs(**args) if x.name.endswith(parts[1])]
 
     return objs
+
+
+# base resource class for all table back resources
+class BqExternalTableBasedResource(Resource):
+    """ Base class of query based big query actions """
+    def __init__(self, table: Table, bqclient: Client, external_config: ExternalConfig):
+        self.table = table
+        self.bqClient = bqclient
+        self.external_config = external_config
+        self.table.external_data_configuration = external_config
+
+    def exists(self):
+        try:
+            self.bqClient.get_table(self.table)
+            return True
+        except NotFound:
+            return False
+
+    def updateTime(self):
+        """ time in milliseconds.  None if not created """
+        self.table = self.bqClient.get_table(self.table)
+        createdTime = self.table.modified
+
+        if createdTime:
+            return int(createdTime.strftime("%s")) * 1000
+        return None
+
+    def create(self):
+        self.bqClient.create_table(self.table)
+
+    def key(self):
+        return _buildDataSetTableKey_(self.table)
+
+    def dependsOn(self, resource: Resource):
+        return self.table.dataset_id == resource.key()
+
+    def isRunning(self):
+        # this is not an async operation
+        return False
