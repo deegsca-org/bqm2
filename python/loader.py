@@ -329,13 +329,19 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                            job=jT)
             out[key] = arsrc
         elif self.tableType == TableType.EXTERNAL_TABLE:
-
-            # stripped = self.cached_file_read(filePath + ".schema").strip()
-            # schema = loadSchemaFromString(stripped)
-            import google.cloud.bigquery
+            from google.cloud.bigquery import ExternalConfig
             # query here is actually json
-            extconfig = google.cloud.bigquery.ExternalConfig.from_api_repr(json.loads(query))
-            arsrc = BqExternalTableBasedResource(bqTable, self.bqClient, extconfig)
+            ext_config_obj = json.loads(query)
+            ext_config = ExternalConfig.from_api_repr(ext_config_obj)
+            autodetect = "autodetect" in ext_config_obj and ext_config_obj["autodetect"]
+            schema = None
+            if not autodetect:
+                stripped = self.cached_file_read(filePath + ".schema").strip()
+                schema = loadSchemaFromString(stripped)
+
+            bqTable = Table(".".join([project, dataset, table]), schema)
+            arsrc = BqExternalTableBasedResource(self.bqClient, bqTable,
+                                                 ext_config)
             out[key] = arsrc
 
         dsetKey = _buildDataSetKey_(bqTable)

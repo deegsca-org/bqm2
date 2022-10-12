@@ -1061,13 +1061,23 @@ def gcsUris(gcsClient, uris):
 
 
 # base resource class for all table back resources
-class BqExternalTableBasedResource(Resource):
+class BqExternalTableBasedResource(BqTableBasedResource):
     """ Base class of query based big query actions """
-    def __init__(self, table: Table, bqclient: Client, external_config: ExternalConfig):
+    def __init__(self, bqclient: Client, table: Table,
+                 external_config: ExternalConfig):
         self.table = table
         self.bqClient = bqclient
         self.external_config = external_config
         self.table.external_data_configuration = external_config
+
+        # assert if autodetect that there's no schema
+        obj = external_config.to_api_repr()
+        autodetect = obj.get("autodetect", None)
+        if autodetect and table.schema:
+            raise Exception("if autodetect is true, then you " +
+                            "must not specify a schema")
+        if not autodetect and not table.schema:
+            raise Exception("you must not specify a schema in a .schema file")
 
     def exists(self):
         try:
@@ -1076,17 +1086,13 @@ class BqExternalTableBasedResource(Resource):
         except NotFound:
             return False
 
-    def updateTime(self):
-        """ time in milliseconds.  None if not created """
-        self.table = self.bqClient.get_table(self.table)
-        createdTime = self.table.modified
-
-        if createdTime:
-            return int(createdTime.strftime("%s")) * 1000
-        return None
-
     def create(self):
-        self.bqClient.create_table(self.table)
+        self.bqClient.delete_table(self.table, not_found_ok=True)
+        self.table = self.bqClient.create_table(self.table)
+        self.table.description = self.make_description()
+        # update description - for some reason this can't be done
+        # on create???
+        self.bqClient.update_table(self.table, ["description"])
 
     def key(self):
         return _buildDataSetTableKey_(self.table)
@@ -1097,3 +1103,33 @@ class BqExternalTableBasedResource(Resource):
     def isRunning(self):
         # this is not an async operation
         return False
+
+    def shouldUpdate(self):
+        current_description = self.bqClient.get_table(self.table).description
+        if not current_description:
+            return True
+        if not self.makeHashTag() in current_description:
+            return True
+        return False
+
+    def makeHashTag(self):
+        m = hashlib.md5()
+        s = json.dumps(self.external_config.to_api_repr(),
+                       sort_keys=True).encode()
+        m.update(s)
+        return m.hexdigest()
+
+    def make_description(self):
+        ret = f"""
+The following config was used to create this external table.
+
+{json.dumps(self.external_config.to_api_repr(), sort_keys=True, indent=2)}
+
+Do not edit this confighash: {self.makeHashTag()}
+        """
+        print(ret)
+        return ret
+
+    def __str__(self):
+        return ".".join([self.table.dataset_id,
+                         self.table.table_id]) + "-external-table"
