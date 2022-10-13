@@ -333,11 +333,17 @@ class BqQueryTemplatingFileLoader(FileLoader):
             # query here is actually json
             ext_config_obj = json.loads(query)
             ext_config = ExternalConfig.from_api_repr(ext_config_obj)
-            autodetect = "autodetect" in ext_config_obj and ext_config_obj["autodetect"]
+            autodetect = "autodetect" in ext_config_obj \
+                         and ext_config_obj["autodetect"]
             schema = None
             if not autodetect:
-                stripped = self.cached_file_read(filePath + ".schema").strip()
-                schema = loadSchemaFromString(stripped)
+                try:
+                    stripped = self.cached_file_read(filePath + ".schema").strip()
+                    schema = loadSchemaFromString(stripped)
+                except Exception:
+                    raise Exception("Please provide a .schema "
+                                    "file for your external table. " +
+                                    filePath + ".schema")
 
             bqTable = Table(".".join([project, dataset, table]), schema)
             arsrc = BqExternalTableBasedResource(self.bqClient, bqTable,

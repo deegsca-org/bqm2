@@ -11,8 +11,7 @@ project_id=${project_id:-$(jq -r .project_id /gcloud-private-key)}
 echo activating account
 gcloud auth activate-service-account --key-file=/gcloud-private-key
 echo setting default project
-#gcloud config set account ${project_id}
-
+gcloud config set project ${project_id}
 
 gsutil ls gs://${project_id}-bqm2-int-test || gsutil mb gs://${project_id}-bqm2-int-test
 

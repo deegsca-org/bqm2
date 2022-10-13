@@ -420,9 +420,8 @@ class BqProcessTableResource(BqTableBasedResource):
 
 
 class BqDataLoadTableResource(BqTableBasedResource):
-    """ todo: currently we block during the creation of this
-    table but we should probably treat this just like any table
-    create and put it in the background
+    """
+        script for loading local data
     """
     def __init__(self, file: str, table: Table,
                  schema: tuple, bqClient: Client,
@@ -751,10 +750,12 @@ class BqQueryBasedResource(BqTableBasedResource):
         raise Exception("implement this function")
 
     def legacyBqQueryDependsOn(self, other: Resource):
+        print(self, " depends on ", other, "?")
         if self == other:
             return False
 
         filtered = getFiltered(self.makeFinalQuery())
+        print("total", filtered, other.key())
         if strictSubstring("".join(["", other.key(), " "]), filtered):
             return True
 
@@ -921,6 +922,8 @@ def processExtractTableOptions(options: dict):
         job_config.field_delimiter = options['field_delimiter']
 
     if "print_header" in options:
+        if type(options['print_header']) == 'str':
+            raise Exception("print_header value must be a json boolean")
         job_config.print_header = bool(options['print_header'])
 
     return job_config
@@ -1060,6 +1063,26 @@ def gcsUris(gcsClient, uris):
     return objs
 
 
+# deliberately class level
+def legacyBqQueryDependsOn(self, other: Resource):
+    print(self, other)
+    if self == other:
+        return False
+
+    if 'query' in dir(self):
+        filtered = getFiltered(self.query)
+        if strictSubstring("".join(["", other.key(), " "]), filtered):
+            return True
+
+        # we need a better way!
+        # other may be simply a dataset in which case it will have not
+        # .query field
+    if isinstance(other, BqDatasetBackedResource) \
+            and strictSubstring(other.key(), self.key()):
+        return True
+    return False
+
+
 # base resource class for all table back resources
 class BqExternalTableBasedResource(BqTableBasedResource):
     """ Base class of query based big query actions """
@@ -1095,10 +1118,13 @@ class BqExternalTableBasedResource(BqTableBasedResource):
         self.bqClient.update_table(self.table, ["description"])
 
     def key(self):
-        return _buildDataSetTableKey_(self.table)
+            return ".".join([self.table.dataset_id,
+                             self.table.table_id])
 
     def dependsOn(self, resource: Resource):
-        return self.table.dataset_id == resource.key()
+        if self.table.dataset_id == resource.key():
+            return True
+        return legacyBqQueryDependsOn(self, resource)
 
     def isRunning(self):
         # this is not an async operation
@@ -1118,6 +1144,9 @@ class BqExternalTableBasedResource(BqTableBasedResource):
                        sort_keys=True).encode()
         m.update(s)
         return m.hexdigest()
+
+    def __eq__(self, other):
+        return self.key() == other.key()
 
     def make_description(self):
         ret = f"""
