@@ -11,7 +11,7 @@ project_id=${project_id:-$(jq -r .project_id /gcloud-private-key)}
 echo activating account
 gcloud auth activate-service-account --key-file=/gcloud-private-key
 echo setting default project
-#gcloud config set account ${project_id}
+gcloud config set project ${project_id}
 
 
 gsutil ls gs://${project_id}-bqm2-int-test || gsutil mb gs://${project_id}-bqm2-int-test
@@ -20,6 +20,8 @@ gsutil ls gs://${project_id}-bqm2-int-test || gsutil mb gs://${project_id}-bqm2-
 gsutil cp /int-test/gcsload/parquet_test.parquet gs://${project_id}-bqm2-int-test/parquet_test.parquet
 
 dataset=int_test_$(date +%s)
+bq mk $project_id:$dataset
+bq update --default_table_expiration 3600 $project_id:$dataset
 python /python/bqm2.py --defaultDataset atest2 --dumpToFolder /tmp/ int-test/bq/ | sort | tee /tmp/debug
 diff /tmp/debug /int-test/test.expected
 
