@@ -750,12 +750,10 @@ class BqQueryBasedResource(BqTableBasedResource):
         raise Exception("implement this function")
 
     def legacyBqQueryDependsOn(self, other: Resource):
-        print(self, " depends on ", other, "?")
         if self == other:
             return False
 
         filtered = getFiltered(self.makeFinalQuery())
-        print("total", filtered, other.key())
         if strictSubstring("".join(["", other.key(), " "]), filtered):
             return True
 
@@ -1065,7 +1063,6 @@ def gcsUris(gcsClient, uris):
 
 # deliberately class level
 def legacyBqQueryDependsOn(self, other: Resource):
-    print(self, other)
     if self == other:
         return False
 
@@ -1156,7 +1153,6 @@ The following config was used to create this external table.
 
 Do not edit this confighash: {self.makeHashTag()}
         """
-        print(ret)
         return ret
 
     def __str__(self):
