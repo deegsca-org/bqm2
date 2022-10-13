@@ -1118,7 +1118,7 @@ class BqExternalTableBasedResource(BqTableBasedResource):
         self.bqClient.update_table(self.table, ["description"])
 
     def key(self):
-            return ".".join([self.table.dataset_id,
+        return ".".join([self.table.dataset_id,
                              self.table.table_id])
 
     def dependsOn(self, resource: Resource):
