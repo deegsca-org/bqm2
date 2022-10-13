@@ -1116,7 +1116,7 @@ class BqExternalTableBasedResource(BqTableBasedResource):
 
     def key(self):
         return ".".join([self.table.dataset_id,
-                             self.table.table_id])
+                         self.table.table_id])
 
     def dependsOn(self, resource: Resource):
         if self.table.dataset_id == resource.key():
