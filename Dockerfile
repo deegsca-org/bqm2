@@ -22,3 +22,5 @@ ADD /python /python
 ADD /test /test
 ADD /int-test /int-test
 RUN /test/test.sh
+
+RUN pip install pytest

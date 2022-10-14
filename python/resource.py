@@ -9,6 +9,7 @@ from json.decoder import JSONDecodeError
 
 from google.cloud import bigquery
 from google.cloud import storage
+from google.cloud.bigquery import ExternalConfig
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.dataset import Dataset
 from google.cloud.bigquery.job import WriteDisposition, \
@@ -419,9 +420,8 @@ class BqProcessTableResource(BqTableBasedResource):
 
 
 class BqDataLoadTableResource(BqTableBasedResource):
-    """ todo: currently we block during the creation of this
-    table but we should probably treat this just like any table
-    create and put it in the background
+    """
+        script for loading local data
     """
     def __init__(self, file: str, table: Table,
                  schema: tuple, bqClient: Client,
@@ -920,6 +920,8 @@ def processExtractTableOptions(options: dict):
         job_config.field_delimiter = options['field_delimiter']
 
     if "print_header" in options:
+        if type(options['print_header']) == 'str':
+            raise Exception("print_header value must be a json boolean")
         job_config.print_header = bool(options['print_header'])
 
     return job_config
@@ -1057,3 +1059,102 @@ def gcsUris(gcsClient, uris):
     objs = [x for x in bucket.list_blobs(**args) if x.name.endswith(parts[1])]
 
     return objs
+
+
+# deliberately class level
+def legacyBqQueryDependsOn(self, other: Resource):
+    if self == other:
+        return False
+
+    if 'query' in dir(self):
+        filtered = getFiltered(self.query)
+        if strictSubstring("".join(["", other.key(), " "]), filtered):
+            return True
+
+        # we need a better way!
+        # other may be simply a dataset in which case it will have not
+        # .query field
+    if isinstance(other, BqDatasetBackedResource) \
+            and strictSubstring(other.key(), self.key()):
+        return True
+    return False
+
+
+# base resource class for all table back resources
+class BqExternalTableBasedResource(BqTableBasedResource):
+    """ Base class of query based big query actions """
+    def __init__(self, bqclient: Client, table: Table,
+                 external_config: ExternalConfig):
+        self.table = table
+        self.bqClient = bqclient
+        self.external_config = external_config
+        self.table.external_data_configuration = external_config
+
+        # assert if autodetect that there's no schema
+        obj = external_config.to_api_repr()
+        autodetect = obj.get("autodetect", None)
+        if autodetect and table.schema:
+            raise Exception("if autodetect is true, then you " +
+                            "must not specify a schema")
+        if not autodetect and not table.schema:
+            raise Exception("you must not specify a schema in a .schema file")
+
+    def exists(self):
+        try:
+            self.bqClient.get_table(self.table)
+            return True
+        except NotFound:
+            return False
+
+    def create(self):
+        self.bqClient.delete_table(self.table, not_found_ok=True)
+        self.table = self.bqClient.create_table(self.table)
+        self.table.description = self.make_description()
+        # update description - for some reason this can't be done
+        # on create???
+        self.bqClient.update_table(self.table, ["description"])
+
+    def key(self):
+        return ".".join([self.table.dataset_id,
+                         self.table.table_id])
+
+    def dependsOn(self, resource: Resource):
+        if self.table.dataset_id == resource.key():
+            return True
+        return legacyBqQueryDependsOn(self, resource)
+
+    def isRunning(self):
+        # this is not an async operation
+        return False
+
+    def shouldUpdate(self):
+        current_description = self.bqClient.get_table(self.table).description
+        if not current_description:
+            return True
+        if not self.makeHashTag() in current_description:
+            return True
+        return False
+
+    def makeHashTag(self):
+        m = hashlib.md5()
+        s = json.dumps(self.external_config.to_api_repr(),
+                       sort_keys=True).encode()
+        m.update(s)
+        return m.hexdigest()
+
+    def __eq__(self, other):
+        return self.key() == other.key()
+
+    def make_description(self):
+        ret = f"""
+The following config was used to create this external table.
+
+{json.dumps(self.external_config.to_api_repr(), sort_keys=True, indent=2)}
+
+Do not edit this confighash: {self.makeHashTag()}
+        """
+        return ret
+
+    def __str__(self):
+        return ".".join([self.table.dataset_id,
+                         self.table.table_id]) + "-external-table"
