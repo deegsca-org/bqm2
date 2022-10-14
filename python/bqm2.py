@@ -258,15 +258,13 @@ if __name__ == "__main__":
     parser.add_option("--bqClientLocation", type=str,
                       help="The location where datasets will be created",
                       default="US")
-                           
-                           
 
     (options, args) = parser.parse_args()
 
     FORMAT = '%(asctime)-15s %(clientip)s %(user)-8s %(message)s'
     logging.basicConfig(format=FORMAT)
 
-    additional_args = { 'location': options.bqClientLocation }
+    additional_args = {'location': options.bqClientLocation}
     kwargs = {"dataset": options.defaultDataset}
     if options.varsFile:
         with open(options.varsFile) as f:
