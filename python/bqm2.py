@@ -255,11 +255,18 @@ if __name__ == "__main__":
                            "view and query templates.  Must be a simple "
                            "dictionary whose values are str")
 
+    parser.add_option("--bqClientLocation", type=str,
+                      help="The location where datasets will be created",
+                      default="US")
+                           
+                           
+
     (options, args) = parser.parse_args()
 
     FORMAT = '%(asctime)-15s %(clientip)s %(user)-8s %(message)s'
     logging.basicConfig(format=FORMAT)
 
+    additional_args = { 'location': options.bqClientLocation }
     kwargs = {"dataset": options.defaultDataset}
     if options.varsFile:
         with open(options.varsFile) as f:
@@ -267,14 +274,14 @@ if __name__ == "__main__":
             for (k, v) in varJson.items():
                 kwargs[k] = v
 
-    client = Client()
+    client = Client(**additional_args)
     if options.defaultProject:
-        client = Client(options.defaultProject)
+        client = Client(options.defaultProject, **additional_args)
         kwargs["project"] = options.defaultProject
     else:
         kwargs["project"] = client.project
 
-    loadClient = Client(project=kwargs["project"])
+    loadClient = Client(project=kwargs["project"], **additional_args)
     gcsClient = storage.Client(project=kwargs["project"])
 
     bqJobs = BqJobs(client)
@@ -330,7 +337,7 @@ if __name__ == "__main__":
     elif options.dumpToFolder:
         executor.dump(options.dumpToFolder)
     elif options.showJobs:
-        for j in BqJobs(bigquery.Client()).jobs():
+        for j in BqJobs(bigquery.Client(**additional_args)).jobs():
             if j.state in set(['RUNNING', 'PENDING']):
                 print(j.name, j.state, j.errors)
     else:
