@@ -19,6 +19,8 @@ gsutil ls gs://${project_id}-bqm2-int-test || gsutil mb gs://${project_id}-bqm2-
 gsutil cp /int-test/gcsload/parquet_test.parquet gs://${project_id}-bqm2-int-test/parquet_test.parquet
 
 dataset=int_test_$(date +%s)
+bq mk $project_id:$dataset
+bq update --default_table_expiration 3600 $project_id:$dataset
 python /python/bqm2.py --defaultDataset atest2 --dumpToFolder /tmp/ int-test/bq/ | sort | tee /tmp/debug
 diff /tmp/debug /int-test/test.expected
 
