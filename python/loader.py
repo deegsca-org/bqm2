@@ -338,7 +338,8 @@ class BqQueryTemplatingFileLoader(FileLoader):
             schema = None
             if not autodetect:
                 try:
-                    stripped = self.cached_file_read(filePath + ".schema").strip()
+                    stripped = \
+                        self.cached_file_read(filePath + ".schema").strip()
                     schema = loadSchemaFromString(stripped)
                 except Exception:
                     raise Exception("Please provide a .schema "
