@@ -1,6 +1,6 @@
 {{
     "autodetect": false,
-    "sourceUris": ["gs://bqm2-359515-bqm2-int-test/testds.extract_test_localdata_tab/000000000000.gz"],
+    "sourceUris": ["gs://{project}/testds.extract_test_localdata_tab/000000000000.gz"],
     "sourceFormat": "CSV",
     "maxBadRecords": 0,
     "csvOptions": {{
