@@ -980,6 +980,11 @@ class BqExtractTableResource(Resource):
         prefix = "/".join(uris.replace("gs://", "").split("/")[:-2])
         return (bucket, prefix)
 
+    def parseBucketAndBlobPath(uri):
+        bucket = uri.split("/")[2]
+        blob_path = "/".join(uri.split("/")[3:])
+        return (bucket, blob_path)
+
     def updateTime(self):
         objs = [int(o.updated.timestamp() * 1000) for o in
                 gcsUris(self.gcsClient, self.uris)]
@@ -1041,10 +1046,10 @@ def parseBucketAndPrefix(uris):
     return (bucket, prefix)
 
 def gcsBlobExists(gcsClient, gcsUri):
-    bucket_name, prefix = parseBucketAndPrefix(gcsUri)
+    bucket_name, blob_path = parseBucketAndBlobPath(gcsUri)
     bucket = gcsClient.bucket(bucket_name)
-    stats = storage.Blob(bucket=bucket, name=prefix).exists(gcsClient)
-    return stats
+    return storage.Blob(bucket=bucket, name=blob_path).exists(gcsClient)
+
 
 def gcsExists(gcsClient, uris):
     return len(gcsUris(gcsClient, uris)) > 0
