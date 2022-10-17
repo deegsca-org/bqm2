@@ -618,9 +618,11 @@ class BqGcsTableLoadResource(BqTableBasedResource):
         return str(self.uris)
 
     def create(self):
-        jobid = "-".join(["create", self.table.dataset_id,
-                          self.table.table_id, str(uuid.uuid4())])
-        self.job = self.bqClient.load_table_from_uri(
+        #require_exists = "gs://gcs_clinet_test/flag"
+        if (self.require_exists is None or (gcsBlobExists(self.require_exists))):
+            jobid = "-".join(["create", self.table.dataset_id, 
+                self.table.table_id, str(uuid.uuid4())])
+            self.job = self.bqClient.load_table_from_uri(
                 self.uris,
                 self.table,
                 jobid,
@@ -1038,6 +1040,11 @@ def parseBucketAndPrefix(uris):
     prefix = "/".join(uris.replace("gs://", "").split("/")[1:])
     return (bucket, prefix)
 
+def gcsBlobExists(gcsClient, gcsUri):
+    bucket_name, prefix = parseBucketAndPrefix(gcsUri)
+    bucket = gcsClient.bucket(bucket_name)
+    stats = storage.Blob(bucket=bucket, name=prefix).exists(gcsClient)
+    return stats
 
 def gcsExists(gcsClient, uris):
     return len(gcsUris(gcsClient, uris)) > 0
