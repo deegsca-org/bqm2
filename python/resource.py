@@ -609,7 +609,10 @@ class BqGcsTableLoadResource(BqTableBasedResource):
                           uri.startswith("gs://")])
         self.expiration = None
         self.require_exists = None
-        print("options:" + str(self.options))
+
+        if "require_exists" in self.options:
+            self.require_exists = self.options['require_exists']
+
 
         if "expiration" in self.options:
             try:
@@ -618,8 +621,7 @@ class BqGcsTableLoadResource(BqTableBasedResource):
                 raise Exception("expiration must be an integer: load: ",
                                 self.table.table_id)
 
-        if "require_exists" in self.options:
-            self.require_exists = self.options['require_exists']
+      
 
     def isRunning(self):
         return isJobRunning(self.job)
