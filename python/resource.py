@@ -610,8 +610,7 @@ class BqGcsTableLoadResource(BqTableBasedResource):
         self.expiration = None
         self.require_exists = None
         print("options:" + str(self.options))
-        print("require_exists: " + self.options['require_exists'])
-        #create .gcstable, create vars file to test, then update integration tests with this (int-test/bq)
+
         if "expiration" in self.options:
             try:
                 self.expiration = int(self.options["expiration"])
