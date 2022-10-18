@@ -598,10 +598,9 @@ class BqGcsTableLoadResource(BqTableBasedResource):
                  query: str,
                  schema: tuple,
                  options: dict):
-        super(BqGcsTableLoadResource, self)\
-            .__init__(table, bqClient)
+        super(BqGcsTableLoadResource, self).__init__(table, bqClient)
         self.job = job
-        self.gcsClient = gcsClient,
+        self.gcsClient = gcsClient
         self.query = query
         self.schema = schema
         self.options = options
@@ -621,8 +620,6 @@ class BqGcsTableLoadResource(BqTableBasedResource):
                 raise Exception("expiration must be an integer: load: ",
                                 self.table.table_id)
 
-      
-
     def isRunning(self):
         return isJobRunning(self.job)
 
@@ -630,7 +627,7 @@ class BqGcsTableLoadResource(BqTableBasedResource):
         return str(self.uris)
 
     def create(self):
-        if (self.require_exists is not None and not gcsBlobExists(self.require_exists)):
+        if self.require_exists is not None and not gcsBlobExists(self.gcsClient, self.require_exists):
             print(self.require_exists + " required file does not exist. Unable to load: ", self.key())
             return
 
@@ -1017,17 +1014,6 @@ class BqExtractTableResource(Resource):
         return self.updateTime() < int(createdTime.strftime("%s")) * 1000
 
 
-# def wait_for_job(job: QueryJob):
-#     while True:
-#         job.reload()  # Refreshes the state via a GET request.
-#         print("waiting for job", job.name)
-#         if job.state == 'DONE':
-#             if job.error_result:
-#                 raise RuntimeError(job.errors)
-#             return
-#         time.sleep(1)
-
-
 def export_data_to_gcs(dataset_name, table_name, destination):
     bigquery_client = Client()
     dataset = bigquery_client.dataset(dataset_name)
@@ -1057,12 +1043,9 @@ def parseBucketAndPrefix(uris):
     prefix = "/".join(uris.replace("gs://", "").split("/")[1:])
     return (bucket, prefix)
 
-def gcsBlobExists(gcsUri):
+def gcsBlobExists(gcsclient, gcsUri):
     bucket_name, blob_path = parseBucketAndBlobPath(gcsUri)
-    #TODO check why gcsClient created in BqGcsTableLoadResource constructor is unable to 
-    #establish connection with service account key passed via env
-    client = storage.Client.from_service_account_json(json_credentials_path="/gcloud-private-key")
-    bucket = storage.Bucket(client, bucket_name)
+    bucket = gcsclient.bucket(bucket_name)
     blob = bucket.blob(blob_path)
     return blob.exists()
 
