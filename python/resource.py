@@ -631,7 +631,8 @@ class BqGcsTableLoadResource(BqTableBasedResource):
 
     def create(self):
         if (self.require_exists is not None and not gcsBlobExists(self.require_exists)):
-            raise Exception(self.require_exists + " required file does not exist")
+            print(self.require_exists + " required file does not exist. Unable to load: ", self.key())
+            return
 
         jobid = "-".join(["create", self.table.dataset_id, 
             self.table.table_id, str(uuid.uuid4())])
