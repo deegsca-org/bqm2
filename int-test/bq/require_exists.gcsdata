@@ -1,1 +1,1 @@
-gs://{project}-bqm2-int-test/require_exists.parquet
+gs://{project}-bqm2-int-test/parquet_test.parquet

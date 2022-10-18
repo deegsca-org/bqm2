@@ -639,6 +639,7 @@ class BqGcsTableLoadResource(BqTableBasedResource):
                 jobid,
                 job_config=processLoadTableOptions(self.options)
                 )
+        else:
 
     def exists(self):
         try:
@@ -1053,8 +1054,8 @@ def parseBucketAndPrefix(uris):
 
 def gcsBlobExists(gcsClient, gcsUri):
     bucket_name, blob_path = parseBucketAndBlobPath(gcsUri)
-    print(bucket)
-    print(blob_path)
+    print("bucket name: " + bucket_name)
+    print("checking if exists:"  + blob_path)
     bucket = gcsClient.get_bucket(bucket_name)
     blob = bucket.blob(blob_path)
     return blob.exists()
