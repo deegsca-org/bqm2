@@ -630,17 +630,17 @@ class BqGcsTableLoadResource(BqTableBasedResource):
     def create(self):
         #require_exists = "gs://gcs_clinet_test/flag"
         print("gcsClient:" + str(self.gcsClient))
-        if (self.require_exists is None or (gcsBlobExists(gcsClient=self.gcsClient, gcsUri=self.require_exists))):
-            jobid = "-".join(["create", self.table.dataset_id, 
-                self.table.table_id, str(uuid.uuid4())])
-            self.job = self.bqClient.load_table_from_uri(
-                self.uris,
-                self.table,
-                jobid,
-                job_config=processLoadTableOptions(self.options)
-                )
-        else:
-            print(self.require_exists + " does not exist")
+        #if (self.require_exists is None or (gcsBlobExists(gcsClient=self.gcsClient, gcsUri=self.require_exists))):
+        jobid = "-".join(["create", self.table.dataset_id, 
+            self.table.table_id, str(uuid.uuid4())])
+        self.job = self.bqClient.load_table_from_uri(
+            self.uris,
+            self.table,
+            jobid,
+            job_config=processLoadTableOptions(self.options)
+            )
+        #else:
+        #    print(self.require_exists + " does not exist")
 
     def exists(self):
         try:
