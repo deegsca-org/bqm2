@@ -10,6 +10,7 @@ from google.cloud import storage
 from google.cloud.exceptions import NotFound
 
 import tmplhelper
+from resource import BqExternalTableBasedResource
 from resource import Resource, _buildDataSetKey_, BqDatasetBackedResource, \
     BqJobs, BqQueryBackedTableResource, _buildDataSetTableKey_, \
     BqViewBackedTableResource, BqDataLoadTableResource, \
@@ -125,6 +126,7 @@ class TableType(Enum):
     UNION_TABLE = 5
     UNION_VIEW = 6
     BASH_TABLE = 7
+    EXTERNAL_TABLE = 8
 
 
 class BqQueryTemplatingFileLoader(FileLoader):
@@ -325,6 +327,28 @@ class BqQueryTemplatingFileLoader(FileLoader):
             arsrc = BqProcessTableResource(query, bqTable, schema,
                                            self.bqClient,
                                            job=jT)
+            out[key] = arsrc
+        elif self.tableType == TableType.EXTERNAL_TABLE:
+            from google.cloud.bigquery import ExternalConfig
+            # query here is actually json
+            ext_config_obj = json.loads(query)
+            ext_config = ExternalConfig.from_api_repr(ext_config_obj)
+            autodetect = "autodetect" in ext_config_obj \
+                         and ext_config_obj["autodetect"]
+            schema = None
+            if not autodetect:
+                try:
+                    stripped = \
+                        self.cached_file_read(filePath + ".schema").strip()
+                    schema = loadSchemaFromString(stripped)
+                except Exception:
+                    raise Exception("Please provide a .schema "
+                                    "file for your external table. " +
+                                    filePath + ".schema")
+
+            bqTable = Table(".".join([project, dataset, table]), schema)
+            arsrc = BqExternalTableBasedResource(self.bqClient, bqTable,
+                                                 ext_config)
             out[key] = arsrc
 
         dsetKey = _buildDataSetKey_(bqTable)
