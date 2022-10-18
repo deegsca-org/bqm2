@@ -175,8 +175,8 @@ class BqDatasetBackedResource(Resource):
         print(createdTime)
         if createdTime:
             #replaced %s with %S to avoid "invalid format" calling createdTime.strftime on windows
-            return int(createdTime.strftime("%S")) * 1000
-            #return int(createdTime.strftime("%s")) * 1000
+            #return int(createdTime.strftime("%S")) * 1000
+            return int(createdTime.strftime("%s")) * 1000
 
         return None
 
@@ -631,7 +631,7 @@ class BqGcsTableLoadResource(BqTableBasedResource):
 
     def create(self):
         #require_exists = "gs://gcs_clinet_test/flag"
-        if (self.require_exists is None or (gcsBlobExists(self.require_exists))):
+        if (self.require_exists is None or (gcsBlobExists(self.require_exists, self.gcsClient))):
             jobid = "-".join(["create", self.table.dataset_id, 
                 self.table.table_id, str(uuid.uuid4())])
             self.job = self.bqClient.load_table_from_uri(
@@ -1054,11 +1054,10 @@ def parseBucketAndPrefix(uris):
     prefix = "/".join(uris.replace("gs://", "").split("/")[1:])
     return (bucket, prefix)
 
-def gcsBlobExists(gcsUri):
+def gcsBlobExists(gcsUri, gcsClient):
     bucket_name, blob_path = parseBucketAndBlobPath(gcsUri)
-    print("bucket name: " + bucket_name)
-    print("checking if exists:"  + blob_path)
     client = storage.Client.from_service_account_json(json_credentials_path="/gcloud-private-key")
+    bucket = storage.Bucket(client, bucket_name)
     blob = bucket.blob(blob_path)
     return blob.exists()
 
