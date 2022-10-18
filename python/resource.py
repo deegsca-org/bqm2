@@ -640,6 +640,7 @@ class BqGcsTableLoadResource(BqTableBasedResource):
                 job_config=processLoadTableOptions(self.options)
                 )
         else:
+            print(self.require_exists + " does not exist")
 
     def exists(self):
         try:
