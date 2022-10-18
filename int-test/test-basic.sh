@@ -13,7 +13,6 @@ gcloud auth activate-service-account --key-file=/gcloud-private-key
 echo setting default project
 gcloud config set project ${project_id}
 
-
 gsutil ls gs://${project_id}-bqm2-int-test || gsutil mb gs://${project_id}-bqm2-int-test
 
 # setup input
