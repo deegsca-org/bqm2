@@ -21,4 +21,8 @@ RUN apt-get install google-cloud-sdk -y
 ADD /python /python
 ADD /test /test
 ADD /int-test /int-test
+
+#fix for windows
+RUN cat /test/test.sh | sed '1 s/\r$//' > /test/test.sh
+
 RUN /test/test.sh

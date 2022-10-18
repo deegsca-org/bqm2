@@ -28,7 +28,6 @@ diff /tmp/debug /int-test/test.expected
 echo Dataset for test is ${dataset}
 python /python/bqm2.py --defaultDataset ${dataset} --execute int-test/bq/
 
-echo testing require_exists
 python /python/bqm2.py --defaultDataset ${dataset} --execute int-test/require_exists/
 
 # check view recreation
