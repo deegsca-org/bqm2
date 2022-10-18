@@ -631,7 +631,7 @@ class BqGcsTableLoadResource(BqTableBasedResource):
 
     def create(self):
         #require_exists = "gs://gcs_clinet_test/flag"
-        if (self.require_exists is None or (gcsBlobExists(self.require_exists, self.gcsClient))):
+        if (self.require_exists is None or (gcsBlobExists(self.require_exists))):
             jobid = "-".join(["create", self.table.dataset_id, 
                 self.table.table_id, str(uuid.uuid4())])
             self.job = self.bqClient.load_table_from_uri(
@@ -1054,8 +1054,10 @@ def parseBucketAndPrefix(uris):
     prefix = "/".join(uris.replace("gs://", "").split("/")[1:])
     return (bucket, prefix)
 
-def gcsBlobExists(gcsUri, gcsClient):
+def gcsBlobExists(gcsUri):
     bucket_name, blob_path = parseBucketAndBlobPath(gcsUri)
+    #TODO check why gcsClient created in BqGcsTableLoadResource constructor is unable to 
+    #establish connection with service account key passed via env
     client = storage.Client.from_service_account_json(json_credentials_path="/gcloud-private-key")
     bucket = storage.Bucket(client, bucket_name)
     blob = bucket.blob(blob_path)
