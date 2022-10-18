@@ -172,8 +172,12 @@ class BqDatasetBackedResource(Resource):
     def updateTime(self):
         """ time in milliseconds.  None if not created """
         createdTime = self.dataset.modified
+        print(createdTime)
         if createdTime:
+            #replaced %s with %S to avoid "invalid format" calling createdTime.strftime on windows
+            #return int(createdTime.strftime("%S")) * 1000
             return int(createdTime.strftime("%s")) * 1000
+
         return None
 
     def create(self):
@@ -604,12 +608,19 @@ class BqGcsTableLoadResource(BqTableBasedResource):
         self.uris = tuple([uri for uri in self.query.split("\n") if
                           uri.startswith("gs://")])
         self.expiration = None
+        self.require_exists = None
+        print("options:" + str(self.options))
+        print("require_exists: " + self.options['require_exists'])
+        #create .gcstable, create vars file to test, then update integration tests with this (int-test/bq)
         if "expiration" in self.options:
             try:
                 self.expiration = int(self.options["expiration"])
             except Exception:
                 raise Exception("expiration must be an integer: load: ",
                                 self.table.table_id)
+
+        if "require_exists" in self.options:
+            self.require_exists = self.options['require_exists']
 
     def isRunning(self):
         return isJobRunning(self.job)
@@ -619,7 +630,8 @@ class BqGcsTableLoadResource(BqTableBasedResource):
 
     def create(self):
         #require_exists = "gs://gcs_clinet_test/flag"
-        if (self.require_exists is None or (gcsBlobExists(self.require_exists))):
+        print("gcsClient:" + str(self.gcsClient))
+        if (self.require_exists is None or (gcsBlobExists(gcsClient=self.gcsClient, gcsUri=self.require_exists))):
             jobid = "-".join(["create", self.table.dataset_id, 
                 self.table.table_id, str(uuid.uuid4())])
             self.job = self.bqClient.load_table_from_uri(
@@ -980,11 +992,6 @@ class BqExtractTableResource(Resource):
         prefix = "/".join(uris.replace("gs://", "").split("/")[:-2])
         return (bucket, prefix)
 
-    def parseBucketAndBlobPath(uri):
-        bucket = uri.split("/")[2]
-        blob_path = "/".join(uri.split("/")[3:])
-        return (bucket, blob_path)
-
     def updateTime(self):
         objs = [int(o.updated.timestamp() * 1000) for o in
                 gcsUris(self.gcsClient, self.uris)]
@@ -1047,9 +1054,17 @@ def parseBucketAndPrefix(uris):
 
 def gcsBlobExists(gcsClient, gcsUri):
     bucket_name, blob_path = parseBucketAndBlobPath(gcsUri)
-    bucket = gcsClient.bucket(bucket_name)
-    return storage.Blob(bucket=bucket, name=blob_path).exists(gcsClient)
+    print(bucket)
+    print(blob_path)
+    bucket = gcsClient.get_bucket(bucket_name)
+    blob = bucket.blob(blob_path)
+    return blob.exists()
+    #return storage.Blob(bucket=bucket, name=blob_path).exists(gcsClient)
 
+def parseBucketAndBlobPath(uri):
+    bucket_name = uri.split("/")[2]
+    blob_path = "/".join(uri.split("/")[3:])
+    return (bucket_name, blob_path)
 
 def gcsExists(gcsClient, uris):
     return len(gcsUris(gcsClient, uris)) > 0
