@@ -173,8 +173,12 @@ class BqDatasetBackedResource(Resource):
     def updateTime(self):
         """ time in milliseconds.  None if not created """
         createdTime = self.dataset.modified
+        print(createdTime)
         if createdTime:
+            #replaced %s with %S to avoid "invalid format" calling createdTime.strftime on windows
+            #return int(createdTime.strftime("%S")) * 1000
             return int(createdTime.strftime("%s")) * 1000
+
         return None
 
     def create(self):
@@ -594,16 +598,21 @@ class BqGcsTableLoadResource(BqTableBasedResource):
                  query: str,
                  schema: tuple,
                  options: dict):
-        super(BqGcsTableLoadResource, self)\
-            .__init__(table, bqClient)
+        super(BqGcsTableLoadResource, self).__init__(table, bqClient)
         self.job = job
-        self.gcsClient = gcsClient,
+        self.gcsClient = gcsClient
         self.query = query
         self.schema = schema
         self.options = options
         self.uris = tuple([uri for uri in self.query.split("\n") if
                           uri.startswith("gs://")])
         self.expiration = None
+        self.require_exists = None
+
+        if "require_exists" in self.options:
+            self.require_exists = self.options['require_exists']
+
+
         if "expiration" in self.options:
             try:
                 self.expiration = int(self.options["expiration"])
@@ -618,14 +627,19 @@ class BqGcsTableLoadResource(BqTableBasedResource):
         return str(self.uris)
 
     def create(self):
-        jobid = "-".join(["create", self.table.dataset_id,
-                          self.table.table_id, str(uuid.uuid4())])
+        if self.require_exists is not None and not gcsBlobExists(self.gcsClient, self.require_exists):
+            print(self.require_exists + " required file does not exist. Unable to load: ", self.key())
+            return
+
+        jobid = "-".join(["create", self.table.dataset_id, 
+            self.table.table_id, str(uuid.uuid4())])
         self.job = self.bqClient.load_table_from_uri(
-                self.uris,
-                self.table,
-                jobid,
-                job_config=processLoadTableOptions(self.options)
-                )
+            self.uris,
+            self.table,
+            jobid,
+            job_config=processLoadTableOptions(self.options)
+            )
+
 
     def exists(self):
         try:
@@ -1000,17 +1014,6 @@ class BqExtractTableResource(Resource):
         return self.updateTime() < int(createdTime.strftime("%s")) * 1000
 
 
-# def wait_for_job(job: QueryJob):
-#     while True:
-#         job.reload()  # Refreshes the state via a GET request.
-#         print("waiting for job", job.name)
-#         if job.state == 'DONE':
-#             if job.error_result:
-#                 raise RuntimeError(job.errors)
-#             return
-#         time.sleep(1)
-
-
 def export_data_to_gcs(dataset_name, table_name, destination):
     bigquery_client = Client()
     dataset = bigquery_client.dataset(dataset_name)
@@ -1040,6 +1043,16 @@ def parseBucketAndPrefix(uris):
     prefix = "/".join(uris.replace("gs://", "").split("/")[1:])
     return (bucket, prefix)
 
+def gcsBlobExists(gcsclient, gcsUri):
+    bucket_name, blob_path = parseBucketAndBlobPath(gcsUri)
+    bucket = gcsclient.bucket(bucket_name)
+    blob = bucket.blob(blob_path)
+    return blob.exists()
+
+def parseBucketAndBlobPath(uri):
+    bucket_name = uri.split("/")[2]
+    blob_path = "/".join(uri.split("/")[3:])
+    return (bucket_name, blob_path)
 
 def gcsExists(gcsClient, uris):
     return len(gcsUris(gcsClient, uris)) > 0
