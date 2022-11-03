@@ -162,7 +162,7 @@ class DependencyExecutor:
                 if not self.resources[n].exists():
                     if len(running) >= maxConcurrent:
                         print("max concurrent running already")
-                        break
+                        continue
                     self.handleRetries(retries, n)
                     print("executing: because it doesn't exist ", n)
                     self.resources[n].create()
@@ -171,7 +171,7 @@ class DependencyExecutor:
                 elif self.resources[n].shouldUpdate():
                     if len(running) >= maxConcurrent:
                         print("max concurrent running already")
-                        break
+                        continue
                     self.handleRetries(retries, n)
                     print("executing: because our definition has changed",
                           n, self.resources[n])
@@ -180,7 +180,7 @@ class DependencyExecutor:
                 elif self.resources[n].updateTime() < depUpdateTimes[n]:
                     if len(running) >= maxConcurrent:
                         print("max concurrent running already")
-                        break
+                        continue
                     self.handleRetries(retries, n)
                     print("executing: because our dependencies have "
                           "changed since we last ran",
