@@ -17,6 +17,8 @@ gsutil ls gs://${project_id}-bqm2-int-test || gsutil mb gs://${project_id}-bqm2-
 
 # setup input
 gsutil cp /int-test/gcsload/parquet_test.parquet gs://${project_id}-bqm2-int-test/parquet_test.parquet
+gsutil cp /int-test/bq/flag gs://${project_id}-bqm2-int-test/flag
+
 
 dataset=int_test_$(date +%s)
 bq mk $project_id:$dataset
