@@ -1,2 +1,2 @@
-PROJECT=eyeota-test
-DEFAULT_DATASET=demo_dataset2
+PROJECT=netwise-data-dev
+DEFAULT_DATASET=mydefault_ds
