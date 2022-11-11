@@ -14,6 +14,41 @@ bqm2 stands for BigQuery Materializer 2.   In short, it allows you to
 - Mac or Unix like machine.  The scripting in root folder has been developed on a mac.   Running under unix should be fine as well.  Windows world is possible but will require your own creation of scripts
 
 # Usage
+bqm2 is a python program
+
+```
+root@925245850b41:/# python /python/bqm2.py 
+Usage: [options] folder[ folder2[...]]
+
+Options:
+  -h, --help            show this help message and exit
+  --execute             Execute the dependencies found in the resources
+  --dotml               Generate dot ml graph of dag of execution
+  --show                Show the dependency tree
+  --dumpToFolder=DUMPTOFOLDER
+                        Dump expanded templates to disk to folder/file using
+                        the key of resource and content of template
+  --showJobs            Show the jobs
+  --defaultDataset=DEFAULTDATASET
+                        The default dataset which will be used if file
+                        definitions don't specify one
+  --maxConcurrent=MAXCONCURRENT
+  --defaultProject=DEFAULTPROJECT
+                        The default project which will be used if file
+                        definitions don't specify one
+  --checkFrequency=CHECKFREQUENCY
+                        The loop interval between dependency tree evaluation
+                        runs
+  --maxRetry=MAXRETRY   The maximum retries for any single resource creation
+  --varsFile=VARSFILE   A json file whose data can be refered to in view and
+                        query templates.  Must be a simple dictionary whose
+                        values are str
+  --bqClientLocation=BQCLIENTLOCATION
+                        The location where datasets will be created
+
+```
+
+# Getting Started
 
 The outline of usage is
 - execute run.sh to build container and get inside it
@@ -89,7 +124,7 @@ If you receive an error while working on your own use case, most likely you've f
 Messages should be specific enough to guide but let us know if they're not and we'll fine tune them.
 
 ## run.sh
-To be clear this is the run.sh in /queries/demo1/.
+To be clear this is the run.sh in /queries/demo1/ not to be confused with /run.sh which gets you into bqm2 container.
 
 Executing run.sh
 
