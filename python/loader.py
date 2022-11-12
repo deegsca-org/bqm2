@@ -222,6 +222,10 @@ class BqQueryTemplatingFileLoader(FileLoader):
         Datasets are ok.
         :return: void
         """
+        templateVarsCopy = templateVars.copy()
+        for k, v in templateVarsCopy.items():
+            tmplhelper.dateformat_helpers.format_date_keys(k, v, templateVars)
+
         if 'dataset' not in templateVars:
             raise Exception("Missing dataset in template vars for " +
                             filePath + ".vars")

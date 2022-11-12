@@ -6,8 +6,19 @@ from frozendict import frozendict
 
 from tmplhelper import explodeTemplate, handleDateField, evalTmplRecurse
 
-
 class Test(unittest.TestCase):
+    def testDateYYYYMMToDash(self):
+        input = {"foo_yyyymm": '202211'}
+        expected = {"foo_yyyymm": '202211', "foo_yyyy-mm": '2022-11'}
+        result = evalTmplRecurse(input)
+        self.assertEqual(expected, result)
+
+    def testDateYYYYMMDDToDash(self):
+        input = {"foo_yyyymmdd": '20221101'}
+        expected = {"foo_yyyymmdd": '20221101', "foo_yyyy-mm-dd": '2022-11-01'}
+        result = evalTmplRecurse(input)
+        self.assertEqual(expected, result)
+
     def testEvalTmplRecurseCircular(self):
         input = {"a": '{b}', 'b': "{a}"}
         try:

@@ -3,6 +3,60 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 
+class DateFormatHelper:
+    def __init__(self, formats: list, formats_suffixes: list):
+        """
+        :param formats: datetime formats
+        :param formats_suffixes: template key suffixes or endings
+        """
+        self.formats = formats
+        self.format_suffixes = formats_suffixes
+
+        assert len(formats)
+        assert len(formats) == len(formats_suffixes)
+
+    def format_date_key(self, k: str, v: str, m: dict):
+        if k.endswith(f"_{self.format_suffixes[0]}") or k == self.format_suffixes[0]:
+            for i in range(1, len(self.format_suffixes)):
+                newkey = k.replace(self.format_suffixes[0], self.format_suffixes[i])
+                if newkey in m:
+                    continue
+                newval = datetime.strptime(v, self.formats[0]).strftime(self.formats[i])
+                m[newkey] = newval
+
+    def show_new_keys(self, keys: list):
+        m = set()
+        for k in keys:
+            if k.endswith(f"_{self.suffix}" or k == self.format_suffixes[0]):
+                for i in range(1, len(self.suffixes)):
+                    m.add(k.replace(self.suffix, self.format_suffixes[i]))
+        return m
+
+
+class DateFormatHelpers:
+    def __init__(self, formatters):
+        self.formatters = formatters
+        assert len(formatters)
+
+    def show_new_keys(self, keys: list):
+        ret = set()
+        for f in self.formatters:
+            ret += f.show_new_keys(keys)
+        return ret
+
+    def format_date_keys(self, k: str, v: str, m: dict):
+        for f in self.formatters:
+            f.format_date_key(k, v, m)
+
+
+dateformat_helpers = DateFormatHelpers(
+    [
+        DateFormatHelper(["%Y%m%d", "%Y-%m-%d"], ["yyyymmdd", "yyyy-mm-dd"]),
+        DateFormatHelper(["%Y%m", "%Y-%m"], ["yyyymm", "yyyy-mm"])
+    ]
+)
+
+
 def evalTmplRecurse(templateKeys: dict):
     """
     We need to potentially format each of the value with some of the
@@ -16,6 +70,9 @@ def evalTmplRecurse(templateKeys: dict):
     templateKeysCopy = templateKeys.copy()
     keysNeeded = {}
     usableKeys = {}
+
+    for (k, v) in templateKeys.items():
+        dateformat_helpers.format_date_keys(k, v, templateKeysCopy)
 
     for (k, v) in templateKeysCopy.items():
         keys = keysOfTemplate(v)
