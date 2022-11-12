@@ -17,7 +17,7 @@ bqm2 stands for BigQuery Materializer 2.   In short, it allows you to
 bqm2 is a python program
 
 ```
-root@925245850b41:/# python /python/bqm2.py 
+root@925245850b41:/# python /python/bqm2.py
 Usage: [options] folder[ folder2[...]]
 
 Options:
@@ -50,14 +50,14 @@ Options:
 
 # Getting Started
 
-The outline of usage is
+The outline of getting started is
 - execute run.sh to build container and get inside it
 - establish gcp authentication using service account file
 - cd into /queries/demo1
 - run verify.sh
 - run run.sh (a different run.sh inside /queries)
 
-This usage walk through uses /queries/demo1 as a basic example of how to use bqm2
+We walk through /queries/demo1 as a basic example of how to use bqm2.
 
 ## obtain service account json file
 You'll need to get this yourself from google console or ask an admin to generate it for you.  Download this file and save it somewhere secure.  You will mount it inside the subsequent docker container.
@@ -78,9 +78,17 @@ Passing ``` bash ``` as the arg, puts you into the container with a command prom
 ``` root@dea00cd2ffd4:/# ```
 
 ## google connectivity
-
 This isn't gcp training.  But we do offer some minimal assistance on how to make contact.
 
+### bqm2 usage
+From inside /queries/demo1, after editing /queries/demo1/env.sh to match your project, cd into /queries/demo1. if you can successfully run
+- bash verify.sh
+- bash run.sh
+You should be set.
+
+If not, inspect the errors and work from there.
+
+### using google sdk tools
 Executing the following, will allow use of google command line tools
 
 ```
@@ -97,9 +105,15 @@ or
 
 If you see your project's datasets or buckets, you're set.  If there an error indicating, you're not logged in or some such, work with your admin to figure it out.
 
-For the rest of this usage guide, you need to be inside ``` /queries/demo1 ```
+# /queries/demo1/*.* files
+
+For the rest of this usage guide, you need to be inside ``` /queries/demo1 ``` while inside the container i.e. after running /run.sh from your host computer.
 
 Take a look at the files in here.  Look at vars files.  Look at querytemplate files.  Unionview's etc.
+
+This set of files is a great starting point for your own usage of bqm2.  Copy that folder somewhere on your host.  Edit the files to suit your need.  You won't need any of the files except the .sh files and even those are optional. Why?  bqm2 is just a python program so you can invoke it however you like.
+
+Now we dive into some of the files in /queries/demo1
 
 ## env.sh
 Edit this file - fill in your project and fill in your default dataset
@@ -112,6 +126,8 @@ DEFAULT_DATASET=mydefault_ds
 save it. exit.
 
 ## verify.sh
+You don't need to do anything to this but you should take a look.
+
 What verify.sh does is to check that all your queries and other resource types you've written "compile".  You'll see that templating is key to bqm2.   verify checks that all your template vars are set, no cycles, and then prints out a minimal dag representation of what /queries/run.sh will do
 
 ``` bash verify.sh  ```
