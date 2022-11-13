@@ -193,8 +193,19 @@ The .vars files format is json.  The structure must be a json array of json obje
 
 ### global vars file OR --varsFile
 
+The global vars file (optional but recommended) is a single json object.
+You can set vars inside this which will be accessible to all templates.
+You may also override global vars within the individal .vars file of your template.
+
 
 ## .querytemplate
+
+### special keys / vars
+- extract - this resolve to a gcs path your service account identity can read and write to/from.  This will trigger a bq extract jobs.
+- compression - relevant when extract is set.  Values GZIP, SNAPPY, or NONE
+- destination_format - relevant when extract is set.  Values - PARQUET, AVRO, NEWLINE_DELIMITED_JSON, CSV
+- field_delimiter - relevant when extract is set.  Any single char.
+- print_header - relevant when extract is set. This must be a json boolean i.e bare true or false.  A string value throws exception.
 
 ## .view
 
@@ -209,7 +220,7 @@ The .vars files format is json.  The structure must be a json array of json obje
 ## .externaltable
 
 ## .gcsdata
-
+- max_bad_records
 
 # Directory structure
 ## /python
