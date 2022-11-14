@@ -12,7 +12,7 @@ Create a manifest file (see structure below)
 }
 """
 import argparse
-import json 
+import json
 
 from google.cloud import storage
 
@@ -25,7 +25,7 @@ def split_uri(uri: str = None):
     parts = tail.split("/")
     bucket = parts.pop(0)
     prefix = "/".join(parts)
-    return bucket, prefix 
+    return bucket, prefix
 
 
 def list_blobs(bucket: str, prefix: str):
@@ -47,10 +47,11 @@ def create_entries(blobs, suffix):
                     "content_length": 1
                 },
                 "mandatory": True,
-                "url": f"s3://bucket/{blob}"       
+                "url": f"s3://bucket/{blob}"
             }
             out["entries"].append(entry)
     return out
+
 
 def generate_manifest(
     data_path: str = None,
@@ -59,7 +60,8 @@ def generate_manifest(
     dry_run: bool = True,
 ):
     """
-    DO NOT write to stdout (or print) any data besides the manifest json in the form of a string
+    DO NOT write to stdout (or print) any data besides
+    the manifest json in the form of a string
     """
     output_dict = {
         "entries": []
@@ -69,7 +71,12 @@ def generate_manifest(
     manifest_bucket, manifest_prefix = split_uri(manifest_path)
 
     if manifest_prefix.endswith("/"):
-        raise Exception(f"The manifest-path argument provided ({manifest_prefix}) cannot end with a trailing slash")
+        raise Exception(
+            f"""
+            The manifest-path argument provided
+            ({manifest_prefix}) cannot end with a trailing slash
+            """
+        )
 
     blobs = list_blobs(bucket=data_bucket, prefix=data_prefix)
     for blob in blobs:
@@ -79,12 +86,17 @@ def generate_manifest(
                     "content_length": blob.size
                 },
                 "mandatory": True,
-                "url": f"s3://{data_bucket}/{blob.name}"       
+                "url": f"s3://{data_bucket}/{blob.name}"
             }
             output_dict["entries"].append(entry)
-            
+
     if not len(output_dict["entries"]):
-        raise Exception(f"No files matching the suffix {filematch_suffix} under the prefix {data_prefix}")
+        raise Exception(
+            f"""
+            No files matching the suffix {filematch_suffix}
+            under the prefix {data_prefix}
+            """
+        )
 
     # create a manifest string from the dictionary above
     output_dict_string = json.dumps(output_dict, sort_keys=True)
@@ -100,11 +112,13 @@ def generate_manifest(
 
 if __name__ == "__main__":
     """
-    DO NOT write to stdout (or print) any data besides the manifest json in the form of a string
+    DO NOT write to stdout (or print) any data besides
+    the manifest json in the form of a string
 
-    -The data-path MUST specify a full gs uri
-    -The filematch-suffix does NOT support wildcards
-    -The manifest-path MUST specify a gs uri ending in manifest (no trailing slash) (s3://bucket/prefix/manifest)
+    - The data-path MUST specify a full gs uri
+    - The filematch-suffix does NOT support wildcards
+    - The manifest-path MUST specify a gs uri ending in manifest
+    (no trailing slash) (s3://bucket/prefix/manifest)
     """
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument("--data-path", type=str, required=True)
@@ -113,7 +127,7 @@ if __name__ == "__main__":
     argument_parser.add_argument("--dry-run", action='store_true')
 
     args = argument_parser.parse_args()
-    
+
     generate_manifest(
         args.data_path,
         args.filematch_suffix,
