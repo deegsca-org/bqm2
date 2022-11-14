@@ -342,6 +342,8 @@ Then your your generated query will be
 select "foo" as colA
 ```
 
+And the results of that query will get stored in a table name ``` bar ```
+
 ### special keys / vars
 - extract - this resolve to a gcs path your service account identity can read and write to/from.  This will trigger a bq extract jobs.
 - compression - relevant when extract is set.  Values GZIP, SNAPPY, DEFLATE, or NONE
