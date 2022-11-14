@@ -534,6 +534,8 @@ The enhancement allows template vars to be built using other template vars as fo
   "c": "c val"
 }
 
+```
+
 This is available in both .vars files as well as global vars files.
 
 # Examples
