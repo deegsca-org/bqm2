@@ -92,6 +92,7 @@ Passing ``` bash ``` as the arg, puts you into the container with a command prom
 From inside /queries/demo1, after editing /queries/demo1/env.sh to match your project, cd into /queries/demo1. If you can successfully run
 - bash verify.sh
 - bash run.sh
+
 You should be set.
 
 If not, inspect the errors and work from there.
@@ -136,7 +137,7 @@ save it. exit.
 ## verify.sh
 You don't need to do anything to this but you should take a look.
 
-What verify.sh does is to check that all your queries and other resource types you've written "compile".  You'll see that templating is key to bqm2.   verify checks that all your template vars are set, no cycles, and then prints out a minimal dag representation of what /queries/run.sh will do.
+What verify.sh does is to check that all your queries and other resource types you've written "compile".  You'll see that templating is key to bqm2.   verify checks that all your template vars are set, no cycles, and then prints out a minimal dag representation of what /queries/demo1/run.sh will do.
 
 ``` bash verify.sh  ```
 
@@ -148,11 +149,11 @@ If you receive an error while working on your own use case, most likely you've f
 Messages should be specific enough to guide but let us know if they're not and we'll fine tune them.
 
 ## run.sh
-To be clear this is the run.sh in /queries/demo1/ not to be confused with /run.sh which gets you into bqm2 container.
+To be clear, this is the run.sh in /queries/demo1/ not to be confused with /run.sh which gets you into bqm2 container.
 
-Executing run.sh
+Executing run.sh will actually execute queries, save them to tables, create datasets, and load and unload data from gcs if specified.
 
-To see the usage
+The files in demo1 just create tables.  no table loading unloading etc.  More details about those operations in docs below.
 
 ## other files
 demo1 folder contains querytempate, unionview, and uniontable types.  Each of those and others will be discussed elsewhere in doc.
@@ -161,6 +162,7 @@ demo1 folder contains querytempate, unionview, and uniontable types.  Each of th
 
 Bqm2 allows you to write templates, save them as files, and have the results of their execution saved in tables.  That's the general idea.
 The templates themselves may be any one of the supported file suffix and resource types.
+
 ## supported file suffixes
 
 To enable this, you need to save your file with one of the extensions listed below.
@@ -175,6 +177,7 @@ To enable this, you need to save your file with one of the extensions listed bel
 - gcsdata
 
 ## vars files
+
 ### template .vars files
 For each template file, you may specify an optional .vars file which allows you to specify additional template variables just for use within the given template.
 
@@ -185,8 +188,9 @@ The .vars files format is json.  The structure must be a json array of json obje
 ```
 [
   {
-    "var1": "value for var1"
-    "var2", "value for var2"
+    "var1": "value for var1",
+    "var2", "value for var2",
+    "var3": "{var1} and {var2} are very var-iable"
   }
 ]
 ```
@@ -237,6 +241,7 @@ This is the filename of the current template without the suffix.   When the tabl
   ...
 ]
 ```
+
 or in an actual template
 
 ```
@@ -293,6 +298,19 @@ The global vars file (optional but recommended) is a file containing a single js
 You can set vars inside this which will be accessible to all templates.
 You may also override global vars within the individal .vars file of your template.
 
+# supported file suffixes
+
+We repeat the list of supported suffixes here before sharing details of each.
+
+- querytemplate
+- view
+- unionview
+- uniontable
+- localdata
+- bashtemplate
+- externaltable
+- gcsdata
+
 ## .querytemplate
 A querytemplate is treated as a template executed as a bigquery QueryJobConfig.
 
@@ -340,9 +358,60 @@ select "foo" as colA
 
 A union view performs a union all of each generated query mapped to the same table name and saves it as a view.
 
+Example:
+
+So if your .unionview is stored in a file name awesomeview.unionview and contains
+
+```
+#standardSQL
+
+select "{foo}" as col
+
+```
+and you .vars is
+```
+[
+  {
+    "foo": "bar"
+  },
+  {
+    "foo": "bazz"
+  }
+]
+```
+Your generated query would be
+
+```
+#standardSQL
+
+select "bar" as col
+
+union all
+
+#standardSQL
+
+select "bazz" as col
+
+```
+
+Then a view will be created in a table named awesomeview in the value of {dataset}.
+
+Note - you can get fancy and override table in here to point to multiple tables
+[
+  { "table": "wheat", "foo": "bar"},
+  { "table": "corn", "foo": "bazz"},
+  { "table": "corn": "bazzy star"}
+]
+
+Now the result would be 2 views
+- wheat
+- corn
+
 ## .uniontable
 
 A union table performs a union all of each generated query mapped to the same table name and executes the resulting query and saves it as a table.
+
+Same logic as unionview.
 
 ## .localdata
 A localdata is a flat file of either tab separated data or new delimited json which may be uploaded to a table by the same name as the file itself.
