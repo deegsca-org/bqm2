@@ -301,9 +301,10 @@ In order to support many different formats for date sequences, bqm2 generates te
 - yyyymmdd
 - yyyymmddhh
 
-So if foo_yyyymm = -1 and that is 202212 then the generated vars
-- yyyymm_yyyy = 2022
+So if foo_yyyymm = -1 and that is 202112 then the generated vars
+- yyyymm_yyyy = 2021
 - yyyymm_mm = 12
+
 will also be available for use in templates.
 
 so specifying
@@ -318,7 +319,8 @@ and specifying
 - yyyymmddhh = -1 where -1 is 2021123101
 
 will generate
-- yyyymmddhh_yyyy = 2022
+
+- yyyymmddhh_yyyy = 2021
 - yyyymmddhh_mm = 11
 - yyyymmddhh_dd = 23
 - yyyymmddhh_hh = 01
