@@ -44,13 +44,6 @@ class Test(unittest.TestCase):
         output_dict_string = json.dumps(output_dict, sort_keys=True)
         self.assertEqual(output_dict_string, '{"entries": [{"mandatory": true, "meta": 1, "url": "s3//bucket/manifest"}]}')
 
-    @mock.patch('google.cloud.storage.Client')
-    @mock.patch('google.cloud.storage.Blob')
-    @mock.patch('google.cloud.storage.Bucket')
-    def test_blob(self, mock_client: Client, mock_blob: Blob, mock_bucket: Bucket):
-        mock_client.bucket = mock_bucket
-        pass
-
 
 if __name__ == '__main__':
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
