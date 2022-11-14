@@ -399,15 +399,18 @@ select "bazz" as col
 Then a view will be created in a table named awesomeview in the value of {dataset}.
 
 Note - you can get fancy and override table in here to point to multiple tables
+
+```
 [
   { "table": "wheat", "foo": "bar"},
   { "table": "corn", "foo": "bazz"},
   { "table": "corn": "bazzy star"}
 ]
+```
 
 Now the result would be 2 views
-- wheat
-- corn
+- wheat - union of one query
+- corn - union of two mapped to corn
 
 ## .uniontable
 
