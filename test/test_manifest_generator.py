@@ -4,7 +4,6 @@ import sys
 import unittest
 
 from unittest import mock
-from unittest.mock import Mock
 from google.cloud.storage import Client, Blob, Bucket
 
 from manifest_generator import * 
@@ -23,7 +22,7 @@ class Test(unittest.TestCase):
             self.fail(f"The manifest-path argument provided ({manifest_path}) cannot end with a trailing slash")
         except:
             pass
-        
+
     def test_entries(self):
         suffix = "txt"
         blobs = ["file.txt"]
