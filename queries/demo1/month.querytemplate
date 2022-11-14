@@ -1,1 +1,1 @@
-select 'foo', '{yyyymm}', '{yyyy-mm}'
+select 'foo', '{yyyymm}', '{yyyymm_yyyy}-{yyyymm_mm}'
