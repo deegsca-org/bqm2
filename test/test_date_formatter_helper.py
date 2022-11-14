@@ -7,6 +7,12 @@ import iter_util
 
 class Test(unittest.TestCase):
 
+    def test_formatters_bad_date_throw_exception(self):
+        try:
+            date_formatter_helper.helpers.format_all_date_keys({"yyyymm": "aaa"})
+        except ValueError:
+            pass
+
     def test_formatters_show_new_keys(self):
         self.assertEqual(set(["yyyymm_yyyy", "yyyymm_mm"]), date_formatter_helper.helpers.show_new_keys(["yyyymm"]))
         self.assertEqual(set(["foo_yyyymm_yyyy", "foo_yyyymm_mm"]),

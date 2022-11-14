@@ -54,7 +54,10 @@ class DateFormatHelpers:
         for f in self.formatters:
             kv = [x for x in m.items()]
             for x in kv:
-                f.format_date_key(x[0], x[1], m)
+                try:
+                    f.format_date_key(x[0], x[1], m)
+                except ValueError as e:
+                    raise ValueError(f"Unable to format key/value {x[0]}/{x[1]}: {e}")
 
 
 helpers = DateFormatHelpers(
