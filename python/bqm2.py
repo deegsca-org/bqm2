@@ -167,7 +167,7 @@ class DependencyExecutor:
                     print("executing: because it doesn't exist ", n)
                     self.resources[n].create()
                     if (self.resources[n].isRunning()):
-                        running.add(n)                    
+                        running.add(n)
                 elif self.resources[n].shouldUpdate():
                     if len(running) >= maxConcurrent:
                         print("max concurrent running already")
