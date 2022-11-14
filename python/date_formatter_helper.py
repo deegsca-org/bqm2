@@ -1,5 +1,6 @@
 from datetime import datetime
 
+
 class DateFormatHelper:
     def __init__(self, formats: list, formats_suffixes: list):
         """
@@ -13,7 +14,8 @@ class DateFormatHelper:
         assert len(formats) == len(formats_suffixes)
 
     def format_date_key(self, k: str, v: str, m: dict):
-        if k.endswith(f"_{self.formats_suffixes[0]}") or k == self.formats_suffixes[0]:
+        if k.endswith(f"_{self.formats_suffixes[0]}") \
+                or k == self.formats_suffixes[0]:
             for i in range(1, len(self.formats_suffixes)):
                 newkey = k.replace(self.formats_suffixes[0], self.formats_suffixes[i])
                 if newkey in m:
@@ -24,9 +26,11 @@ class DateFormatHelper:
     def show_new_keys(self, keys: list):
         m = set()
         for k in keys:
-            if k == self.formats_suffixes[0] or k.endswith(f"_{self.formats_suffixes[0]}"):
+            if k == self.formats_suffixes[0] \
+                    or k.endswith(f"_{self.formats_suffixes[0]}"):
                 for i in range(1, len(self.formats)):
-                    m.add(k.replace(self.formats_suffixes[0], self.formats_suffixes[i]))
+                    m.add(k.replace(self.formats_suffixes[0],
+                                    self.formats_suffixes[i]))
         return m
 
 
@@ -55,11 +59,12 @@ class DateFormatHelpers:
 
 helpers = DateFormatHelpers(
     [
-        DateFormatHelper(["%Y%m%d%H", "%Y", "%m", "%d", "%H"], ["yyyymmddhh", "yyyymmddhh_yyyy",
-                                                              "yyyymmddhh_mm", "yyyymmddhh_dd",
-                                                              "yyyymmddhh_hh"]),
+        DateFormatHelper(["%Y%m%d%H", "%Y", "%m", "%d", "%H"],
+                         ["yyyymmddhh", "yyyymmddhh_yyyy",
+                          "yyyymmddhh_mm", "yyyymmddhh_dd",
+                          "yyyymmddhh_hh"]),
         DateFormatHelper(["%Y%m%d", "%Y", "%m", "%d"], ["yyyymmdd", "yyyymmdd_yyyy",
-                                                                    "yyyymmdd_mm", "yyyymmdd_dd"]),
+                                                        "yyyymmdd_mm", "yyyymmdd_dd"]),
         DateFormatHelper(["%Y%m", "%Y", "%m"], ["yyyymm", "yyyymm_yyyy", "yyyymm_mm"]),
     ]
 )

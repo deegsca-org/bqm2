@@ -265,6 +265,8 @@ bqm2 allows a short hand for specifying relative to NOW date ranges. The special
 - .*yyyymmdd - for year month days like 20221231
 - .*yyyymmddhh - for year, month, day, hour like 2022123100
 
+Any var which is equal to or ends with the above suffixes and has integer values, will be treated as a date variable.
+
 You may specify dates using an integer or a range of dates using an integer array of length 2.
 
 Examples
@@ -291,6 +293,38 @@ yields
 - ["20220931", "20221001", "20221002"]
 
 respectively.
+
+### generated date based vars
+In order to support many different formats for date sequences, bqm2 generates template variables representing the year, month, day, and hour components of any of the 3 date base key types
+
+- yyyymm
+- yyyymmdd
+- yyyymmddhh
+
+So if foo_yyyymm = 202212 is specified in global vars or a template vars, then the generated vars
+- yyyymm_yyyy = 2022
+- yyyymm_mm = 12
+will also be available for use in templates.
+
+so specifying
+- yyyymmdd
+
+will generate
+- yyyymmdd_yyyy
+- yyyymmdd_mm
+- yyyymmdd_dd
+
+and specifying
+- yyyymmddhh
+
+will generate
+- yyyymmddhh_yyyy
+- yyyymmddhh_mm
+- yyyymmddhh_dd
+- yyyymmddhh_hh
+
+template vars for use based upon the same date sequence.
+
 
 ### global vars file OR --varsFile
 

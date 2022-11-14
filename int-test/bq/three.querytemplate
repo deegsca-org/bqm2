@@ -1,1 +1,2 @@
+# {three_yyyymmdd_dd} and {three_yyyymmdd_mm} and {three_yyyymmdd_yyyy}
 select 1 as a

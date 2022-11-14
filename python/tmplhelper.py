@@ -1,7 +1,8 @@
 import string
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from date_formatter_helper import dateformat_helpers
+
+from date_formatter_helper import helpers
 
 def evalTmplRecurse(templateKeys: dict):
     """
@@ -17,8 +18,7 @@ def evalTmplRecurse(templateKeys: dict):
     keysNeeded = {}
     usableKeys = {}
 
-    for (k, v) in templateKeys.items():
-        dateformat_helpers.format_date_keys(k, v, templateKeysCopy)
+    helpers.format_all_date_keys(templateKeysCopy)
 
     for (k, v) in templateKeysCopy.items():
         keys = keysOfTemplate(v)
