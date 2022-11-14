@@ -301,30 +301,29 @@ In order to support many different formats for date sequences, bqm2 generates te
 - yyyymmdd
 - yyyymmddhh
 
-So if foo_yyyymm = 202212 is specified in global vars or a template vars, then the generated vars
+So if foo_yyyymm = -1 and that is 202212 then the generated vars
 - yyyymm_yyyy = 2022
 - yyyymm_mm = 12
 will also be available for use in templates.
 
 so specifying
-- yyyymmdd
+- yyyymmdd = -1 where -1 is 20211231
 
 will generate
-- yyyymmdd_yyyy
-- yyyymmdd_mm
-- yyyymmdd_dd
+- yyyymmdd_yyyy = 2021
+- yyyymmdd_mm = 11
+- yyyymmdd_dd = 31
 
 and specifying
-- yyyymmddhh
+- yyyymmddhh = -1 where -1 is 2021123101
 
 will generate
-- yyyymmddhh_yyyy
-- yyyymmddhh_mm
-- yyyymmddhh_dd
-- yyyymmddhh_hh
+- yyyymmddhh_yyyy = 2022
+- yyyymmddhh_mm = 11
+- yyyymmddhh_dd = 23
+- yyyymmddhh_hh = 01
 
 template vars for use based upon the same date sequence.
-
 
 ### global vars file OR --varsFile
 
