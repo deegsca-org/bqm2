@@ -175,8 +175,9 @@ class BqDatasetBackedResource(Resource):
         createdTime = self.dataset.modified
         print(createdTime)
         if createdTime:
-            #replaced %s with %S to avoid "invalid format" calling createdTime.strftime on windows
-            #return int(createdTime.strftime("%S")) * 1000
+            # replaced %s with %S to avoid "invalid format"
+            # calling createdTime.strftime on windows
+            # return int(createdTime.strftime("%S")) * 1000
             return int(createdTime.strftime("%s")) * 1000
 
         return None
@@ -612,7 +613,6 @@ class BqGcsTableLoadResource(BqTableBasedResource):
         if "require_exists" in self.options:
             self.require_exists = self.options['require_exists']
 
-
         if "expiration" in self.options:
             try:
                 self.expiration = int(self.options["expiration"])
@@ -627,19 +627,21 @@ class BqGcsTableLoadResource(BqTableBasedResource):
         return str(self.uris)
 
     def create(self):
-        if self.require_exists is not None and not gcsBlobExists(self.gcsClient, self.require_exists):
-            print(self.require_exists + " required file does not exist. Unable to load: ", self.key())
+        if self.require_exists is not None \
+                and not gcsBlobExists(self.gcsClient, self.require_exists):
+            print(self.require_exists + " required file "
+                                        "does not exist. "
+                                        "Unable to load: ", self.key())
             return
 
         jobid = "-".join(["create", self.table.dataset_id,
-            self.table.table_id, str(uuid.uuid4())])
+                         self.table.table_id, str(uuid.uuid4())])
         self.job = self.bqClient.load_table_from_uri(
             self.uris,
             self.table,
             jobid,
             job_config=processLoadTableOptions(self.options)
             )
-
 
     def exists(self):
         try:
@@ -1042,16 +1044,19 @@ def parseBucketAndPrefix(uris):
     prefix = "/".join(uris.replace("gs://", "").split("/")[1:])
     return (bucket, prefix)
 
+
 def gcsBlobExists(gcsclient, gcsUri):
     bucket_name, blob_path = parseBucketAndBlobPath(gcsUri)
     bucket = gcsclient.bucket(bucket_name)
     blob = bucket.blob(blob_path)
     return blob.exists()
 
+
 def parseBucketAndBlobPath(uri):
     bucket_name = uri.split("/")[2]
     blob_path = "/".join(uri.split("/")[3:])
     return (bucket_name, blob_path)
+
 
 def gcsExists(gcsClient, uris):
     return len(gcsUris(gcsClient, uris)) > 0
