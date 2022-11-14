@@ -631,7 +631,7 @@ class BqGcsTableLoadResource(BqTableBasedResource):
             print(self.require_exists + " required file does not exist. Unable to load: ", self.key())
             return
 
-        jobid = "-".join(["create", self.table.dataset_id, 
+        jobid = "-".join(["create", self.table.dataset_id,
             self.table.table_id, str(uuid.uuid4())])
         self.job = self.bqClient.load_table_from_uri(
             self.uris,
@@ -999,8 +999,7 @@ class BqExtractTableResource(Resource):
                 gcsUris(self.gcsClient, self.uris)]
 
         if len(objs) == 0:
-            # basically i've never be extracted
-            print("returning 0")
+            # basically i've never been extracted
             return 0
 
         return max(objs)

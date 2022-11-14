@@ -8,6 +8,7 @@ bqm2 stands for BigQuery Materializer 2.   In short, it allows you to
 - execute those queries in the correct order
 - and save the results of each query in datasets and tables of your choosing.
 - change those queries and re-run and only re-execute that query AND any of its dependants.
+- load and extract gcs data to and from tables
 
 # Requirements
 - Google project and access to bigquery and preferably cloud storage
@@ -15,7 +16,6 @@ bqm2 stands for BigQuery Materializer 2.   In short, it allows you to
 - Mac or Unix like machine.  The scripting in root folder has been developed on a mac.   Running under unix should be fine as well.  Windows world is possible but will require your own creation of scripts
 
 # Usage
-bqm2 is a python program for executing queries you've developed and saving those results into tables.
 
 ```
 root@0055716555ea:/queries/demo1# python /python/bqm2.py
@@ -88,9 +88,7 @@ Passing ``` bash ``` as the arg, puts you into the container with a command prom
 ``` root@dea00cd2ffd4:/# ```
 
 ## google connectivity
-This readme is no substiatue for gcp training, but we do offer some minimal assistance on how to make contact i.e authenticate.
 
-### bqm2 usage
 From inside /queries/demo1, after editing /queries/demo1/env.sh to match your project, cd into /queries/demo1. If you can successfully run
 - bash verify.sh
 - bash run.sh
@@ -156,11 +154,13 @@ Executing run.sh
 
 To see the usage
 
+## other files
+demo1 folder contains querytempate, unionview, and uniontable types.  Each of those and others will be discussed elsewhere in doc.
 
 # template types, file suffixes, and .vars files
 
 Bqm2 allows you to write templates, save them as files, and have the results of their execution saved in tables.  That's the general idea.
-
+The templates themselves may be any one of the supported file suffix and resource types.
 ## supported file suffixes
 
 To enable this, you need to save your file with one of the extensions listed below.
@@ -191,53 +191,282 @@ The .vars files format is json.  The structure must be a json array of json obje
 ]
 ```
 
+### special vars
+
+For all templates, there are a few special variables
+
+- table
+
+The table var controls the name of the bigquery table name which will be used to store the resources of the template execution.  In the case of querytemplate or view templates, each generated query must be mapped to a single table name.  This is not the case for unionview and uniontable.
+
+The default value for table var is the name of the template without the suffix. So foo.querytemplate gets a table value of ``` foo ```.
+
+- dataset
+
+A default data set is required to be set by the command line.  It will be used to create the full table name to store template execution results if not over ridden.
+
+You can reference any number of dataset you wish and over ride the default one in any of your templates .vars files
+
+```
+[
+  {
+    "my_dataset": "some_other_dataset",
+    "dataset": "overridesthedefaultdataset"
+  },
+  .
+  .
+]
+```
+
+- project
+
+A default project is taken from the command line argument or infered from the bq client used for execution of bqm2 i.e. the service account file used currently.
+
+You may reference any number of projects and establish different variables to use their names and load or query their data.
+
+- filename
+This is the filename of the current template without the suffix.   When the table var is not specified, this is used as the table var.  You may use it anywhere in vars files or template itself as shown.
+
+```
+[
+  {
+    "table": "{filename}_{yyyymmdd}"
+    .
+    .
+  },
+  ...
+]
+```
+or in an actual template
+
+```
+#standardSQL
+
+select "{filename}" as template
+```
+
+- folder
+
+This is the folder name of the current template.  Note if you specify your folder as ., then your folder var will be named literal . .
+
+This var is not used much.
+
+### special date based variables
+
+bqm2 allows a short hand for specifying relative to NOW date ranges. The specially interpreted variables are
+
+- .*yyyy - for years like 2022
+- .*yyyymm - for year months like 202212
+- .*yyyymmdd - for year month days like 20221231
+- .*yyyymmddhh - for year, month, day, hour like 2022123100
+
+You may specify dates using an integer or a range of dates using an integer array of length 2.
+
+Examples
+
+If this year is 2022, then
+```
+"yyyy": -1,
+"foo_yyyy": [-1, -2]
+````
+
+yields
+- "yyyy": "2021"
+- "foo_yyyy": ["2020", "2021"]
+respectively.
+
+or if today is 20221001, then
+```
+"yyyymmdd": 2,
+"foo_yyyymmdd": [-1, 1]
+```
+yields
+
+- "20221003"
+- ["20220931", "20221001", "20221002"]
+
+respectively.
+
 ### global vars file OR --varsFile
 
-The global vars file (optional but recommended) is a single json object.
+The global vars file (optional but recommended) is a file containing a single json object.
 You can set vars inside this which will be accessible to all templates.
 You may also override global vars within the individal .vars file of your template.
 
-
 ## .querytemplate
+A querytemplate is treated as a template executed as a bigquery QueryJobConfig.
+
+Both legacy and standard sql variants of Biquery are available.  THe default is legacy.  To use standard sql , the first line of query must be #standardSQL.
+
+- Example
+
+If your template is in a file named bar.querytemplate
+
+```
+#standardSQL
+
+select "{var1}" as colA
+```
+
+And your .vars file is in a file name bar.querytemplate.vars
+```
+[
+  {
+    "var1": "foo"
+  }
+]
+```
+Then your your generated query will be
+
+```
+#standardSQL
+
+select "foo" as colA
+```
 
 ### special keys / vars
 - extract - this resolve to a gcs path your service account identity can read and write to/from.  This will trigger a bq extract jobs.
-- compression - relevant when extract is set.  Values GZIP, SNAPPY, or NONE
+- compression - relevant when extract is set.  Values GZIP, SNAPPY, DEFLATE, or NONE
 - destination_format - relevant when extract is set.  Values - PARQUET, AVRO, NEWLINE_DELIMITED_JSON, CSV
 - field_delimiter - relevant when extract is set.  Any single char.
-- print_header - relevant when extract is set. This must be a json boolean i.e bare true or false.  A string value throws exception.
+- print_header - relevant when extract is set AND destination_format = CSV.
+  This must be a json boolean i.e bare true or false.  A string value throws exception.
 
 ## .view
 
+.views are just like .querytemplate but executed synchronously because at time of writing there's no async mode for creating views.
+
 ## .unionview
+
+A union view performs a union all of each generated query mapped to the same table name and saves it as a view.
 
 ## .uniontable
 
+A union table performs a union all of each generated query mapped to the same table name and executes the resulting query and saves it as a table.
+
 ## .localdata
+A localdata is a flat file of either tab separated data or new delimited json which may be uploaded to a table by the same name as the file itself.
+
+A .localdata.schema file is required.
+
+A hash of the entire file is used to determine if a reload is necessary.
+
+### default values used
+- skip_leading_rows is set to 1 by default.  In case of CSV i.e. tab delimited data, be sure to include a header.
+- table - will always be the name of file without the suffix and it will be stored in the default dataset of the current bqm2 execution.
 
 ## .bashtemplate
+Allows for the stdout of a bash script to be used as table data to load to biquery tables.  The execution of bashtemplate are NOT asynchronous.
+
+A .bashtemplate.schema file is required.
+
+- json form - https://cloud.google.com/bigquery/docs/schemas#specifying_a_json_schema_file
+or
+- shorthand form - i.e. col1:col1type[col2:col2type[,....]]
+
+### special keys / vars
+- source_format
+- field_delimiter - defaults to '\t'
+
+### default values used
+- WRITE_DISPOSITION is set to WRITE_TRUNCATE i.e. always replace table.
+- ignore_unknown_values is alway True.
 
 ## .externaltable
 
+Big Query external tables may be created using this suffix.  The template format is json itself.  In order to inter-operate with
+python's .format templating, the curly braces must be double escaped as follows.
+
+```
+{{
+    "sourceUris": ["gs://{project}-bqm2-int-test/parquet_test.parquet"],
+    "sourceFormat": "PARQUET",
+}}
+```
+
+Above example is taken from /int-test/bq/test_parquet.externaltable
+
+.externaltable.schema file is required if "autodetect" is not true
+
+- json form - https://cloud.google.com/bigquery/docs/schemas#specifying_a_json_schema_file
+or
+- shorthand form - i.e. col1:col1type[col2:col2type[,....]]
+
+Supported structure of template follows the ExternalConfig structure - https://cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.external_config.ExternalConfig
+
+Exhaustive testing of all options hasn't occured but everything you specify in your external table template file is passed through to biquery python apis directly.
+
+The from_api_repr method is used to load your template
+- https://cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.external_config.ExternalConfig#google_cloud_bigquery_external_config_ExternalConfig_from_api_repr
+
+
 ## .gcsdata
-- max_bad_records
+These templates allow you to load gcs data into tables.
+
+.gcsdata.schema file is required.
+
+- json form - https://cloud.google.com/bigquery/docs/schemas#specifying_a_json_schema_file
+or
+- shorthand form - i.e. col1:col1type[col2:col2type[,....]]
+
+### special keys / vars
+
+- max_bad_records - max number of allowable bad records
+- skip_leading_row - number of leading rows to skip (CSV only)
+- source_format
+  - AVRO
+  - CSV
+  - DATASTORE_BACKUP (not tested)
+  - NEWLINE_DELIMITED_JSON
+  - ORC
+  - PARQUET
+
+- ignore_unknown_values
+Consult google docs however this allows ignoring unknown columns in json or csv
+
+- require_exists - if set, this directive requires that the gcs path specified contains or is at least on gcs blob.
 
 # Directory structure
 ## /python
 Contains actual python code i.e. bqm2 and others
 
 ## /int-test
-Contains a host of folders and script which together comprise a fairly comprehensive set of integration tests
+Contains a host of folders and scripts which together comprise a fairly comprehensive set of integration tests and examples of each file extension.
 
 # State Management
-# async execution
-bqm2 launches query execution, table loading from gcs, and table extraction to gcs in the background. It caches the job object received from biquery and checks its status at the interval specified with the ``` checkFrquency ``` argument.
+## async execution
+bqm2 launches query execution, table loading from gcs, and table extraction to gcs in the background. It caches the job object received from biquery and checks its status at the interval specified with the ``` checkFrequency ``` argument.
 ## queryhash and description
-bqm2 uses the description field of biquery tables to store a hash of the query which was used to create the table.
+bqm2 uses the description field of biquery tables to store a hash of the query which was used to create the table or view.
+
 If the hash is the same as the query to be executed, the query will not be re-run UNLESS one of the tables or views the query depends on has been changed since the time of the current tables creation.
+
+The query used to create the table or view is also saved in the description for reference.
 
 ## BigQuery Jobs Api
 At start up and when bqm2 is run in ``` execute ``` mode, bqm2 loads up all the jobs in the PENDING or RUNNING state.   It identifies anything which it is trying to manage, update, or create.  If there is a match, bqm2 will wait for the RUNNING or PENDING job to complete.
+
+# Templating
+
+## What templating engine is used?
+None in fact.   Basic python .format(....) is used however it's enhanced significantly.
+
+The enhancement allows template vars to be built using other template vars as follows.
+
+```
+{
+  "a": "key a is built from value of {b} and value of {c}",
+  "b": "b val",
+  "c": "c val"
+}
+
+This is available in both .vars files as well as global vars files.
+
+# Examples
+The /int-test sub folders contain many examples of all if not most of the supported file extension and resource types.
+
+There is an integration test /int-test/test-basic.sh which is run on pull request of this repo which exercised them all.
+
 # todo
 
 - local dev issues
@@ -260,3 +489,8 @@ At start up and when bqm2 is run in ``` execute ``` mode, bqm2 loads up all the 
   - add support for declartive definitions of bigquery transfer service
   - investigate k8s job extension i.e use k8 jobs in same manner as we use bq jobs
   - add extension to define pre-existing tables and establish those as dependencies.
+
+
+  # known issues
+
+  - The descriptions of tables can end up being too long and interfere with execution and saving of results.  A fix is in the works as of 2022/11/14.
