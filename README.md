@@ -1,5 +1,6 @@
 # bqm2
 
+
 ## What is bqm2?
 
 bqm2 stands for BigQuery Materializer 2.   In short, it allows you to
