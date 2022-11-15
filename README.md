@@ -313,6 +313,7 @@ so specifying
 
 will generate
 - yyyymmdd_yyyy = 2021
+- yyyymmdd_yy = 21
 - yyyymmdd_mm = 11
 - yyyymmdd_dd = 31
 

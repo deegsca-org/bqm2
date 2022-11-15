@@ -1,5 +1,6 @@
 import json
 import unittest
+import logging
 
 import date_formatter_helper
 import iter_util
@@ -17,9 +18,9 @@ class Test(unittest.TestCase):
         self.assertEqual(set(["yyyymm_yyyy", "yyyymm_mm"]), date_formatter_helper.helpers.show_new_keys(["yyyymm"]))
         self.assertEqual(set(["foo_yyyymm_yyyy", "foo_yyyymm_mm"]),
                          date_formatter_helper.helpers.show_new_keys(["foo_yyyymm"]))
-        self.assertEqual(set(["yyyymmdd_yyyy", "yyyymmdd_mm", "yyyymmdd_dd"]),
+        self.assertEqual(set(["yyyymmdd_yyyy", "yyyymmdd_mm", "yyyymmdd_dd", "yyyymmdd_yy"]),
                          date_formatter_helper.helpers.show_new_keys(["yyyymmdd"]))
-        self.assertEqual(set(["foo_yyyymmdd_yyyy", "foo_yyyymmdd_mm", "foo_yyyymmdd_dd"]),
+        self.assertEqual(set(["foo_yyyymmdd_yyyy", "foo_yyyymmdd_mm", "foo_yyyymmdd_dd", "foo_yyyymmdd_yy"]),
                          date_formatter_helper.helpers.show_new_keys(["foo_yyyymmdd"]))
         self.assertEqual(set(["yyyymmddhh_yyyy", "yyyymmddhh_mm", "yyyymmddhh_dd", "yyyymmddhh_hh"]),
                          date_formatter_helper.helpers.show_new_keys(["yyyymmddhh"]))
@@ -56,8 +57,10 @@ class Test(unittest.TestCase):
           "foo_yyyymmddhh_dd": "31",
           "foo_yyyymmddhh_hh": "01",
           "yyyymmdd_yyyy": "2022",
+          "yyyymmdd_yy": "22",
           "yyyymmdd_mm": "12",
           "yyyymmdd_dd": "31",
+          "foo_yyyymmdd_yy": "22",
           "foo_yyyymmdd_yyyy": "2022",
           "foo_yyyymmdd_mm": "12",
           "foo_yyyymmdd_dd": "31",
@@ -69,3 +72,9 @@ class Test(unittest.TestCase):
 
         date_formatter_helper.helpers.format_all_date_keys(inp)
         self.assertEqual(inp, expected)
+
+if __name__ == '__main__':
+    import sys
+    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
+    unittest.main()
