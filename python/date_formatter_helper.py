@@ -17,10 +17,12 @@ class DateFormatHelper:
         if k.endswith(f"_{self.formats_suffixes[0]}") \
                 or k == self.formats_suffixes[0]:
             for i in range(1, len(self.formats_suffixes)):
-                newkey = k.replace(self.formats_suffixes[0], self.formats_suffixes[i])
+                newkey = k.replace(self.formats_suffixes[0],
+                                   self.formats_suffixes[i])
                 if newkey in m:
                     continue
-                newval = datetime.strptime(v, self.formats[0]).strftime(self.formats[i])
+                newval = datetime.strptime(v, self.formats[0])\
+                    .strftime(self.formats[i])
                 m[newkey] = newval
 
     def show_new_keys(self, keys: list):
@@ -57,7 +59,9 @@ class DateFormatHelpers:
                 try:
                     f.format_date_key(x[0], x[1], m)
                 except ValueError as e:
-                    raise ValueError(f"Unable to format key/value {x[0]}/{x[1]}: {e}")
+                    raise ValueError(f"Unable to format "
+                                     f"key/value "
+                                     f"{x[0]}/{x[1]}: {e}")
 
 
 helpers = DateFormatHelpers(
@@ -66,8 +70,10 @@ helpers = DateFormatHelpers(
                          ["yyyymmddhh", "yyyymmddhh_yyyy",
                           "yyyymmddhh_mm", "yyyymmddhh_dd",
                           "yyyymmddhh_hh"]),
-        DateFormatHelper(["%Y%m%d", "%Y", "%m", "%d"], ["yyyymmdd", "yyyymmdd_yyyy",
-                                                        "yyyymmdd_mm", "yyyymmdd_dd"]),
-        DateFormatHelper(["%Y%m", "%Y", "%m"], ["yyyymm", "yyyymm_yyyy", "yyyymm_mm"]),
+        DateFormatHelper(["%Y%m%d", "%Y", "%m", "%d"],
+                         ["yyyymmdd", "yyyymmdd_yyyy",
+                          "yyyymmdd_mm", "yyyymmdd_dd"]),
+        DateFormatHelper(["%Y%m", "%Y", "%m"],
+                         ["yyyymm", "yyyymm_yyyy", "yyyymm_mm"]),
     ]
 )

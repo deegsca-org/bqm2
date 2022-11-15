@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 
 from date_formatter_helper import helpers
 
+
 def evalTmplRecurse(templateKeys: dict):
     """
     We need to potentially format each of the value with some of the
