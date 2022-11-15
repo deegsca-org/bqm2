@@ -6,18 +6,8 @@ from frozendict import frozendict
 
 from tmplhelper import explodeTemplate, handleDateField, evalTmplRecurse
 
-class Test(unittest.TestCase):
-    def testDateYYYYMMToDash(self):
-        input = {"foo_yyyymm": '202211'}
-        expected = {"foo_yyyymm": '202211', "foo_yyyy-mm": '2022-11'}
-        result = evalTmplRecurse(input)
-        self.assertEqual(expected, result)
 
-    def testDateYYYYMMDDToDash(self):
-        input = {"foo_yyyymmdd": '20221101'}
-        expected = {"foo_yyyymmdd": '20221101', "foo_yyyy-mm-dd": '2022-11-01'}
-        result = evalTmplRecurse(input)
-        self.assertEqual(expected, result)
+class Test(unittest.TestCase):
 
     def testEvalTmplRecurseCircular(self):
         input = {"a": '{b}', 'b': "{a}"}
@@ -56,6 +46,9 @@ class Test(unittest.TestCase):
         n = datetime.today()
         expectedDt = n + timedelta(days=-1)
         dt = expectedDt.strftime("%Y%m%d")
+        yyyy = expectedDt.strftime("%Y")
+        mm = expectedDt.strftime("%m")
+        dd = expectedDt.strftime("%d")
 
         templateVars = {"filename": "fname",
                         "table": "{filename}_{keywords_table}",
@@ -64,7 +57,11 @@ class Test(unittest.TestCase):
 
         expected = {'keywords_table': 'url_kw_' + dt, 'filename': 'fname',
                     'yyyymmdd': dt, 'table': 'fname_url_kw_' + dt,
-                    'overlap_threshold': '0.2'}
+                    'overlap_threshold': '0.2',
+                    "yyyymmdd_dd": dd,
+                    "yyyymmdd_mm": mm,
+                    "yyyymmdd_yyyy": yyyy}
+
         result = evalTmplRecurse(explodeTemplate(templateVars)[0])
         self.assertEqual(expected, result)
 
