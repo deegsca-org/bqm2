@@ -5,7 +5,6 @@ import iter_util
 class Test(unittest.TestCase):
 
     def testBasicIteration(self):
-        assert False
         expected = set(range(2))
         accum = set()
         data = [x for x in range(2)]
