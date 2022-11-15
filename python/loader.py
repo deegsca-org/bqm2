@@ -16,6 +16,7 @@ from resource import Resource, _buildDataSetKey_, BqDatasetBackedResource, \
     BqViewBackedTableResource, BqDataLoadTableResource, \
     BqExtractTableResource, BqGcsTableLoadResource, BqProcessTableResource
 from tmplhelper import evalTmplRecurse, explodeTemplate
+from date_formatter_helper import helpers
 
 
 class FileLoader:
@@ -222,6 +223,9 @@ class BqQueryTemplatingFileLoader(FileLoader):
         Datasets are ok.
         :return: void
         """
+        templateVarsCopy = templateVars.copy()
+        helpers.format_all_date_keys(templateVarsCopy)
+
         if 'dataset' not in templateVars:
             raise Exception("Missing dataset in template vars for " +
                             filePath + ".vars")

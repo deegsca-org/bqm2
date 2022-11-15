@@ -173,7 +173,6 @@ class BqDatasetBackedResource(Resource):
     def updateTime(self):
         """ time in milliseconds.  None if not created """
         createdTime = self.dataset.modified
-        print(createdTime)
         if createdTime:
             # replaced %s with %S to avoid "invalid format"
             # calling createdTime.strftime on windows

@@ -1,5 +1,6 @@
 # bqm2
 
+
 ## What is bqm2?
 
 bqm2 stands for BigQuery Materializer 2.   In short, it allows you to
@@ -265,6 +266,8 @@ bqm2 allows a short hand for specifying relative to NOW date ranges. The special
 - .*yyyymmdd - for year month days like 20221231
 - .*yyyymmddhh - for year, month, day, hour like 2022123100
 
+Any var which is equal to or ends with the above suffixes and has integer values, will be treated as a date variable.
+
 You may specify dates using an integer or a range of dates using an integer array of length 2.
 
 Examples
@@ -291,6 +294,39 @@ yields
 - ["20220931", "20221001", "20221002"]
 
 respectively.
+
+### generated date based vars
+In order to support many different formats for date sequences, bqm2 generates template variables representing the year, month, day, and hour components of any of the 3 date base key types
+
+- yyyymm
+- yyyymmdd
+- yyyymmddhh
+
+So if foo_yyyymm = -1 and that is 202112 then the generated vars
+- yyyymm_yyyy = 2021
+- yyyymm_mm = 12
+
+will also be available for use in templates.
+
+so specifying
+- yyyymmdd = -1 where -1 is 20211231
+
+will generate
+- yyyymmdd_yyyy = 2021
+- yyyymmdd_mm = 11
+- yyyymmdd_dd = 31
+
+and specifying
+- yyyymmddhh = -1 where -1 is 2021123101
+
+will generate
+
+- yyyymmddhh_yyyy = 2021
+- yyyymmddhh_mm = 11
+- yyyymmddhh_dd = 23
+- yyyymmddhh_hh = 01
+
+template vars for use based upon the same date sequence.
 
 ### global vars file OR --varsFile
 
