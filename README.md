@@ -585,23 +585,21 @@ There is an integration test /int-test/test-basic.sh which is run on pull reques
   - platform type is hard coded in /run.sh
 
 - integration tests
-  - we should switch from creating a new dataset for each run and instead have a single dataset with very tight default expiration set
+  - we should switch from creating a new dataset for each run and instead have 
+  a single dataset with very tight default expiration set
 
 - enhancements
   - add materialized view support
   - add create table as support
   - add csv|tsv|json|psv extension handlers
     - we already have .localdata support - above extensions would just fill in some default values
-  - add better date generation support
   - add support for running as current gcp user i.e no need for service account file
-  - add native support for bq external tables
   - longer term - add support for redshift
   - add support for declarative definitions of gcs transfer service
   - add support for declartive definitions of bigquery transfer service
   - investigate k8s job extension i.e use k8 jobs in same manner as we use bq jobs
   - add extension to define pre-existing tables and establish those as dependencies.
 
-
-  # known issues
+# known issues
 
   - The descriptions of tables can end up being too long and interfere with execution and saving of results.  A fix is in the works as of 2022/11/14.
