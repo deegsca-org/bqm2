@@ -219,7 +219,11 @@ if __name__ == "__main__":
     parser = optparse.OptionParser("[options] folder[ folder2[...]]")
     parser.add_option("--execute", dest="execute",
                       action="store_true", default=False,
-                      help="Execute the dependencies found in the resources")
+                      help="'execute' mode.  Accepts a list of folders "
+                           "- folder[ folder2[...]]."
+                      "Renders the templates found in those folders "
+                      "and executes them in proper order "
+                           "of their dependencies")
     parser.add_option("--dotml", dest="dotml",
                       action="store_true", default=False,
                       help="Generate dot ml graph of dag of execution")
@@ -228,17 +232,20 @@ if __name__ == "__main__":
                       help="Show the dependency tree")
     parser.add_option("--dumpToFolder", dest="dumpToFolder",
                       default=None,
-                      help="Dump expanded templates to disk to "
-                           "folder/file using the key of resource and "
-                           "content of template")
+                      help="Dump expanded templates to disk to the "
+                           "folder as files using the key of resource and "
+                           "content of template.  ")
     parser.add_option("--showJobs", dest="showJobs",
                       action="store_true", default=False,
                       help="Show the jobs")
     parser.add_option("--defaultDataset", dest="defaultDataset",
                       help="The default dataset which will be used if "
-                           "file definitions don't specify one")
+                           "file definitions don't specify one.  This "
+                           "will be automatically created during "
+                           "'execute' mode")
     parser.add_option("--maxConcurrent", dest="maxConcurrent", type=int,
-                      default=10)
+                      default=10, help="The maximum number of bq or "
+                                       "other jobs to run in parallel.")
     parser.add_option("--defaultProject", dest="defaultProject",
                       help="The default project which will be used if "
                            "file definitions don't specify one")
@@ -249,16 +256,20 @@ if __name__ == "__main__":
 
     parser.add_option("--maxRetry", dest="maxRetry", type=int,
                       default=2,
-                      help="The maximum retries for any single resource "
-                           "creation")
+                      help="Relevant to 'execute' mode. The maximum "
+                           "retries for any single resource "
+                           "creation. Once this number is hit, "
+                           "the program will exit non-zero")
 
     parser.add_option("--varsFile", dest="varsFile", type=str,
                       help="A json file whose data can be refered to in "
                            "view and query templates.  Must be a simple "
-                           "dictionary whose values are str")
+                           "dictionary whose values are string, integers, "
+                           "or arrays of strings and integers")
 
     parser.add_option("--bqClientLocation", type=str,
-                      help="The location where datasets will be created",
+                      help="The location where datasets will be "
+                           "created. i.e. us-east1, us-central1, etc",
                       default="US")
 
     (options, args) = parser.parse_args()

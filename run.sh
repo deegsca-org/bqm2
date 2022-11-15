@@ -14,7 +14,12 @@ then
     touch ~/.vimrc
 fi
 
-echo mounting ${QUERIES} to ${MOUNT}
+# create an empty .vimrc to prevent this getting mounted as a folder. Do us all a favor and set expandtab so we get no tabs.
+touch ~/.vimrc
+
+QUERIES=${QUERIES:-$(pwd)/queries}
+MOUNT=${MOUNT:-/queries}
+echo mounting ${QUERIES} to ${MOUNT}.  Set these yourself to override where your queries live and where they are mounted to in the countainer
 docker run --platform linux/amd64 -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud-private-key \
 -e AWS_SHARED_CREDENTIALS_FILE=/root/.aws/mfa \
 -v ${GOOGLE_APPLICATION_SERVICE_ACCOUNT}:/gcloud-private-key \

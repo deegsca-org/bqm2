@@ -173,7 +173,6 @@ class BqDatasetBackedResource(Resource):
     def updateTime(self):
         """ time in milliseconds.  None if not created """
         createdTime = self.dataset.modified
-        print(createdTime)
         if createdTime:
             # replaced %s with %S to avoid "invalid format"
             # calling createdTime.strftime on windows
@@ -1009,8 +1008,7 @@ class BqExtractTableResource(Resource):
                 gcsUris(self.gcsClient, self.uris)]
 
         if len(objs) == 0:
-            # basically i've never be extracted
-            print("returning 0")
+            # basically i've never been extracted
             return 0
 
         return max(objs)
