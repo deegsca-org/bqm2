@@ -390,7 +390,6 @@ And the results of that query will get stored in a table name ``` bar ```
 - print_header - relevant when extract is set AND destination_format = CSV.
   This must be a json boolean i.e bare true or false.  A string value throws exception.
 - expiration - table expiration in days from the create time of table
-- qualifier - @deegsca what is this? @lindsay where do you see this?
 
 ## .view
 
