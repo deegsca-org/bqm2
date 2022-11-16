@@ -61,11 +61,12 @@ Options:
 # Getting Started
 
 The outline of getting started is
-- execute run.sh to build container and get inside it
+- execute run.sh to build container and get inside it. 
 - establish gcp authentication using service account file
 - cd into /queries/demo1
 - run verify.sh
 - run run.sh (a different run.sh inside /queries)
+
 
 We walk through /queries/demo1 as a basic example of how to use bqm2.
 
@@ -405,7 +406,7 @@ So if your .unionview is stored in a file name awesomeview.unionview and contain
 select "{foo}" as col
 
 ```
-and you .vars is
+and your .vars is
 ```
 [
   {
