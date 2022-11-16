@@ -70,9 +70,9 @@ helpers = DateFormatHelpers(
                          ["yyyymmddhh", "yyyymmddhh_yyyy",
                           "yyyymmddhh_mm", "yyyymmddhh_dd",
                           "yyyymmddhh_hh"]),
-        DateFormatHelper(["%Y%m%d", "%Y", "%m", "%d"],
+        DateFormatHelper(["%Y%m%d", "%Y", "%m", "%d", '%y'],
                          ["yyyymmdd", "yyyymmdd_yyyy",
-                          "yyyymmdd_mm", "yyyymmdd_dd"]),
+                          "yyyymmdd_mm", "yyyymmdd_dd", "yyyymmdd_yy"]),
         DateFormatHelper(["%Y%m", "%Y", "%m"],
                          ["yyyymm", "yyyymm_yyyy", "yyyymm_mm"]),
     ]

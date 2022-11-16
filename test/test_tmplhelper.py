@@ -49,6 +49,7 @@ class Test(unittest.TestCase):
         yyyy = expectedDt.strftime("%Y")
         mm = expectedDt.strftime("%m")
         dd = expectedDt.strftime("%d")
+        yy = expectedDt.strftime("%y")
 
         templateVars = {"filename": "fname",
                         "table": "{filename}_{keywords_table}",
@@ -59,7 +60,7 @@ class Test(unittest.TestCase):
                     'yyyymmdd': dt, 'table': 'fname_url_kw_' + dt,
                     'overlap_threshold': '0.2',
                     "yyyymmdd_dd": dd,
-                    "yyyymmdd_mm": mm,
+                    "yyyymmdd_mm": mm, "yyyymmdd_yy": yy,
                     "yyyymmdd_yyyy": yyyy}
 
         result = evalTmplRecurse(explodeTemplate(templateVars)[0])

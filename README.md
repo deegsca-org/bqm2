@@ -1,5 +1,6 @@
 # bqm2
 
+
 ## What is bqm2?
 
 bqm2 stands for BigQuery Materializer 2.   In short, it allows you to
@@ -313,6 +314,7 @@ so specifying
 
 will generate
 - yyyymmdd_yyyy = 2021
+- yyyymmdd_yy = 21
 - yyyymmdd_mm = 11
 - yyyymmdd_dd = 31
 
