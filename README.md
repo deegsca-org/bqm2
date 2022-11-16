@@ -389,9 +389,8 @@ And the results of that query will get stored in a table name ``` bar ```
 - field_delimiter - relevant when extract is set.  Any single char.
 - print_header - relevant when extract is set AND destination_format = CSV.
   This must be a json boolean i.e bare true or false.  A string value throws exception.
-- expiration - table expiration in days @deegsca is this correct?
-- qualifier - @deegsca what is this?
-- skip_header - @deegsca what is skip_header vs print_header?
+- expiration - table expiration in days from the create time of table
+- qualifier - @deegsca what is this? @lindsay where do you see this?
 
 ## .view
 
@@ -527,7 +526,7 @@ or
 ### special keys / vars
 
 - max_bad_records - max number of allowable bad records
-- skip_leading_row - number of leading rows to skip (CSV only)
+- skip_leading_rows - number of leading rows to skip (CSV only)
 - source_format
   - AVRO
   - CSV
