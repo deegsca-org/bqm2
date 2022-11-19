@@ -200,17 +200,21 @@ class Test(unittest.TestCase):
             days=-1)]]
         expectedD = [dt.strftime("%d") for dt in [n, n + timedelta(
             days=-1)]]
+        expectedYY = [dt.strftime("%y") for dt in [n, n + timedelta(
+            days=-1)]]
 
         one = {
             "yyyymmdd_yyyy": expectedY[0],
             "yyyymmdd_mm": expectedM[0],
             "yyyymmdd_dd": expectedD[0],
+            "yyyymmdd_yy": expectedYY[0],
         }
 
         two = {
             "yyyymmdd_yyyy": expectedY[1],
             "yyyymmdd_mm": expectedM[1],
             "yyyymmdd_dd": expectedD[1],
+            "yyyymmdd_yy": expectedYY[1],
         }
 
         template = {"folder": "afolder",

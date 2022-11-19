@@ -313,6 +313,7 @@ so specifying
 
 will generate
 - yyyymmdd_yyyy = 2021
+- yyyymmdd_yy = 21
 - yyyymmdd_mm = 11
 - yyyymmdd_dd = 31
 
@@ -533,6 +534,13 @@ or
 
 - ignore_unknown_values
 Consult google docs however this allows ignoring unknown columns in json or csv
+
+- encoding
+- quote_character - csv only
+- null_marker - csv only
+- allow_jagged_rows csv only
+- destination_table_description - loaded table description
+
 
 - require_exists - if set, this directive requires that the gcs path specified contains or is at least on gcs blob.
 
