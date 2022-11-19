@@ -18,10 +18,10 @@ RUN apt-get install apt-transport-https ca-certificates -y
 RUN apt-get update -y
 RUN apt-get install google-cloud-sdk -y
 
+RUN pip install pytest
+
 ADD /python /python
 ADD /test /test
 ADD /int-test /int-test
 
 RUN /test/test.sh
-
-RUN pip install pytest
