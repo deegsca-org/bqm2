@@ -590,6 +590,19 @@ def processLoadTableOptions(options: dict):
     if 'allow_quoted_newlines' in options:
         job_config.allow_quoted_newlines = options["allow_quoted_newlines"]
 
+    if 'encoding' in options:
+        job_config.encoding = options["encoding"]
+
+    if 'quote_character' in options:
+        job_config.quote_character = options["quote_character"]
+
+    if 'null_marker' in options:
+        job_config.null_marker = options["null_marker"]
+
+    if 'destination_table_description' in options:
+        job_config.destination_table_description = \
+            options["destination_table_description"]
+
     return job_config
 
 
