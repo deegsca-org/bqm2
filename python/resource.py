@@ -586,6 +586,10 @@ def processLoadTableOptions(options: dict):
 
     if 'skip_leading_rows' in options:
         job_config.skip_leading_rows = int(options["skip_leading_rows"])
+
+    if 'allow_quoted_newlines' in options:
+        job_config.allow_quoted_newlines = options["allow_quoted_newlines"]
+
     return job_config
 
 
