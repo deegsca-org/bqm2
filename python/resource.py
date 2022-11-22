@@ -21,7 +21,7 @@ from google.cloud.exceptions import NotFound
 # max length of description allowed by biquery
 # https://cloud.google.com/bigquery/quotas - found this by updating
 # a single table description.
-# We take 150 off the max 
+# We take 150 off the max
 MAX_DESCRIPTION_LEN = 16384
 
 
