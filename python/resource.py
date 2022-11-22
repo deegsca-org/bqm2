@@ -18,6 +18,12 @@ from google.cloud.bigquery.job import WriteDisposition, \
 from google.cloud.bigquery.table import Table, TableReference
 from google.cloud.exceptions import NotFound
 
+# max length of description allowed by biquery
+# https://cloud.google.com/bigquery/quotas - found this by updating
+# a single table description.
+# We take 150 off the max
+MAX_DESCRIPTION_LEN = 16384
+
 
 class Resource:
     def exists(self):
@@ -759,15 +765,25 @@ class BqQueryBasedResource(BqTableBasedResource):
 
         if createdTime:
             # getting even more debt ridden
-            finalQuery = self.makeFinalQuery()
-            # hijack this step to update description - ugh - debt supreme
+            final_query = self.makeFinalQuery()
+            # hijack this step to update description
             if not self.table.description:
+                # we use a create time + a missing description
+                # as a queue to update description with the state
+                # necessary to know if we should update / re-run next
+                # time.
+                padding = 300
+                truncated = len(final_query) > MAX_DESCRIPTION_LEN - padding \
+                    and "(truncated due to size)" or ""
 
-                msg = ["This table/view was created with the " +
-                       "following query", "", "/**", finalQuery, "*/",
+                msg = [f"This table/view was created with "
+                       f"the following {truncated} query", "/**",
+                       f"{final_query[:MAX_DESCRIPTION_LEN-padding]}",
+                       "*/",
                        "Edits to this description will not be saved",
                        "Do not edit", "",
                        self.makeQueryHashTag()]
+
                 self.table.description = "\n".join(msg)
                 self.table = self.bqClient.update_table(
                         self.table,
