@@ -1113,7 +1113,8 @@ def gcsUris(gcsClient, uris):
     args = {'prefix': parts[0], 'delimiter': '/'}
 
     bucket = gcsClient.get_bucket(bucket)
-    objs = [x for x in bucket.list_blobs(**args) if len(parts) == 1 or x.name.endswith(parts[1])]
+    objs = [x for x in bucket.list_blobs(**args) 
+            if len(parts) == 1 or x.name.endswith(parts[1])]
 
     return objs
 
