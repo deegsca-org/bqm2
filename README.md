@@ -62,11 +62,12 @@ Options:
 # Getting Started
 
 The outline of getting started is
-- execute run.sh to build container and get inside it
+- execute run.sh to build container and get inside it. 
 - establish gcp authentication using service account file
 - cd into /queries/demo1
 - run verify.sh
 - run run.sh (a different run.sh inside /queries)
+
 
 We walk through /queries/demo1 as a basic example of how to use bqm2.
 
@@ -388,6 +389,7 @@ And the results of that query will get stored in a table name ``` bar ```
 - field_delimiter - relevant when extract is set.  Any single char.
 - print_header - relevant when extract is set AND destination_format = CSV.
   This must be a json boolean i.e bare true or false.  A string value throws exception.
+- expiration - table expiration in days from the create time of table
 
 ## .view
 
@@ -407,7 +409,7 @@ So if your .unionview is stored in a file name awesomeview.unionview and contain
 select "{foo}" as col
 
 ```
-and you .vars is
+and your .vars is
 ```
 [
   {
@@ -523,7 +525,7 @@ or
 ### special keys / vars
 
 - max_bad_records - max number of allowable bad records
-- skip_leading_row - number of leading rows to skip (CSV only)
+- skip_leading_rows - number of leading rows to skip (CSV only)
 - source_format
   - AVRO
   - CSV
@@ -594,23 +596,21 @@ There is an integration test /int-test/test-basic.sh which is run on pull reques
   - platform type is hard coded in /run.sh
 
 - integration tests
-  - we should switch from creating a new dataset for each run and instead have a single dataset with very tight default expiration set
+  - we should switch from creating a new dataset for each run and instead have 
+  a single dataset with very tight default expiration set
 
 - enhancements
   - add materialized view support
   - add create table as support
   - add csv|tsv|json|psv extension handlers
     - we already have .localdata support - above extensions would just fill in some default values
-  - add better date generation support
   - add support for running as current gcp user i.e no need for service account file
-  - add native support for bq external tables
   - longer term - add support for redshift
   - add support for declarative definitions of gcs transfer service
   - add support for declartive definitions of bigquery transfer service
   - investigate k8s job extension i.e use k8 jobs in same manner as we use bq jobs
   - add extension to define pre-existing tables and establish those as dependencies.
 
-
-  # known issues
+# known issues
 
   - The descriptions of tables can end up being too long and interfere with execution and saving of results.  A fix is in the works as of 2022/11/14.
