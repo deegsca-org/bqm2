@@ -10,11 +10,10 @@ from time import sleep
 
 from collections import defaultdict
 
-import sys
 from google.cloud import storage
 from google.cloud.bigquery.client import Client
-from google.cloud.bigquery.job import QueryJobConfig
 
+from jobconfig import BaseJobConfigLoader
 from loader import DelegatingFileSuffixLoader, \
     BqQueryTemplatingFileLoader, BqDataFileLoader, \
     TableType
@@ -332,7 +331,9 @@ if __name__ == "__main__":
             externaltable=BqQueryTemplatingFileLoader(loadClient, gcsClient,
                                                       bqJobs,
                                                       TableType.EXTERNAL_TABLE,
-                                                      kwargs))
+                                                      kwargs),
+            queryjobconfig=BaseJobConfigLoader())
+
     )
 
     (resources, dependencies) = builder.buildDepend(args)

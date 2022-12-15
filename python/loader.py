@@ -246,6 +246,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
         bqTable = self.bqClient.dataset(dataset,
                                         project=project).table(
                                             table.replace('-', '_'))
+        # todo - must we really exclude - from table names?
         key = _buildDataSetTableKey_(bqTable)
 
         prev = key in out and out[key] or None
@@ -389,6 +390,15 @@ class BqQueryTemplatingFileLoader(FileLoader):
         return ret.values()
 
     def loadTemplateVars(self, filePath) -> list:
+        """
+
+        Args:
+            filePath: The json file to load must be a list of dictionaries
+
+        Returns:
+            A list of dict
+
+        """
         try:
             with open(filePath) as f:
                 templateVarsList = json.loads(f.read())
