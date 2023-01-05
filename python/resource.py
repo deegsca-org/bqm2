@@ -9,7 +9,7 @@ from json.decoder import JSONDecodeError
 
 from google.cloud import bigquery
 from google.cloud import storage
-from google.cloud.bigquery import ExternalConfig
+from google.cloud.bigquery import ExternalConfig, QueryJobConfig
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.dataset import Dataset
 from google.cloud.bigquery.job import WriteDisposition, \
@@ -885,11 +885,13 @@ def strictSubstring(contained, container):
 
 class BqQueryBackedTableResource(BqQueryBasedResource):
     def __init__(self, query: str, table: Table,
-                 bqClient: Client, queryJob: QueryJob, expiration: None):
+                 bqClient: Client, queryJob: QueryJob,
+                 queryJobConfig: QueryJobConfig, expiration: None):
         super(BqQueryBackedTableResource, self)\
             .__init__(query, table, bqClient)
         self.queryJob = queryJob
         self.expiration = expiration
+        self.queryJobConfig = queryJobConfig
 
     def tableExists(self):
         try:
@@ -905,18 +907,10 @@ class BqQueryBackedTableResource(BqQueryBasedResource):
         jobid = "-".join(["create", self.table.dataset_id,
                           self.table.table_id, str(uuid.uuid4())])
         use_legacy_sql = "#standardsql" not in self.makeFinalQuery().lower()
-        job_config = bigquery.QueryJobConfig()
-        job_config.allow_large_results = True
-        job_config.flatten_results = False
-        job_config.use_legacy_sql = use_legacy_sql
-        job_config.destination = self.table
-        job_config.priority = QueryPriority.INTERACTIVE
-        job_config.write_disposition = WriteDisposition.WRITE_TRUNCATE
-        job_config.maximum_billing_tier = 2
 
         self.queryJob = self.bqClient.query(
             self.makeFinalQuery(),
-            job_config=job_config,
+            job_config=self.queryJobConfig,
             job_id=jobid
         )
 

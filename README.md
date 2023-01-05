@@ -591,6 +591,7 @@ There is an integration test /int-test/test-basic.sh which is run on pull reques
 
 # todo
 
+- dataset is created even in dumpToFolder/verify mode
 - local dev issues
   - deal with M1 and other mac platform types for local execution
   - platform type is hard coded in /run.sh
@@ -600,6 +601,7 @@ There is an integration test /int-test/test-basic.sh which is run on pull reques
   a single dataset with very tight default expiration set
 
 - enhancements
+  - .dataset type and remove passive dataset creation
   - add materialized view support
   - add create table as support
   - add csv|tsv|json|psv extension handlers
@@ -609,7 +611,8 @@ There is an integration test /int-test/test-basic.sh which is run on pull reques
   - add support for declarative definitions of gcs transfer service
   - add support for declartive definitions of bigquery transfer service
   - investigate k8s job extension i.e use k8 jobs in same manner as we use bq jobs
-  - add extension to define pre-existing tables and establish those as dependencies.
+  - add extension to define pre-existing tables and establish those as dependencies
+  - add .model support - this is a to_api_repr and from_api_repr situation
 
 # known issues
 

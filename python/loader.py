@@ -1,12 +1,15 @@
 import json
+import os.path
 from json.decoder import JSONDecodeError
 
+import yaml
+from google.cloud.bigquery import WriteDisposition, QueryJobConfig
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import Table
 from os.path import getmtime
 from enum import Enum
-from google.cloud import storage
+from google.cloud import storage, bigquery
 from google.cloud.exceptions import NotFound
 
 import tmplhelper
@@ -117,6 +120,26 @@ def cacheDataSet(bqClient: Client, bqTable: Table, datasets: dict):
             dataset = bqClient.create_dataset(bqTable.dataset_id)
         datasets[dsetKey] = BqDatasetBackedResource(dataset, bqClient)
     return datasets[dsetKey]
+
+
+def load_query_job_config(table, jobconfigpath, templatevars):
+
+    if not os.path.exists(jobconfigpath):
+        job_config = bigquery.QueryJobConfig()
+        job_config.allow_large_results = True
+        job_config.flatten_results = False
+        job_config.use_legacy_sql = False
+        job_config.destination = table
+        job_config.write_disposition = WriteDisposition.WRITE_TRUNCATE
+        return job_config
+
+    with open(jobconfigpath, 'r') as f:
+        try:
+            # first as yaml
+            obj = yaml.safe_load(f.read().format(**templatevars))
+            return QueryJobConfig().from_api_repr(obj)
+        except Exception as e:
+            raise Exception(f"unable to load {jobconfigpath} as yaml", e)
 
 
 class TableType(Enum):
@@ -261,9 +284,13 @@ class BqQueryTemplatingFileLoader(FileLoader):
 
         if self.tableType == TableType.TABLE:
             jT = self.bqJobs.getJobForTable(bqTable)
+            qjobconfig = load_query_job_config(bqTable,
+                                               filePath + ".queryjobconfig",
+                                               templateVars)
             arsrc = BqQueryBackedTableResource([query], bqTable,
                                                self.bqClient,
                                                queryJob=jT,
+                                               queryJobConfig=qjobconfig,
                                                expiration=expiration)
             out[key] = arsrc
             # check if there is extraction logic
@@ -307,10 +334,15 @@ class BqQueryTemplatingFileLoader(FileLoader):
                 arsrc = out[key]
                 arsrc.addQuery(query)
             else:
+                qjobconfig = load_query_job_config(bqTable,
+                                                   filePath
+                                                   + ".queryjobconfig",
+                                                   templateVars)
                 jT = self.bqJobs.getJobForTable(bqTable)
                 arsrc = BqQueryBackedTableResource([query], bqTable,
                                                    self.bqClient,
                                                    queryJob=jT,
+                                                   queryJobConfig=qjobconfig,
                                                    expiration=expiration)
                 out[key] = arsrc
 
