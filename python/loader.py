@@ -136,7 +136,9 @@ def load_query_job_config(table, jobconfigpath, templatevars):
         try:
             # first as yaml
             obj = yaml.safe_load(f.read().format(**templatevars))
-            return QueryJobConfig().from_api_repr(obj)
+            job_config = QueryJobConfig().from_api_repr(obj)
+            #job_config.destination = table
+            return job_config
         except Exception as e:
             raise Exception(f"unable to load {jobconfigpath} as yaml", e)
 
