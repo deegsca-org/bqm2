@@ -908,7 +908,6 @@ class BqQueryBackedTableResource(BqQueryBasedResource):
             self.bqClient.delete_table(table_id, not_found_ok=True)
         jobid = "-".join(["create", self.table.dataset_id,
                           self.table.table_id, str(uuid.uuid4())])
-        use_legacy_sql = "#standardsql" not in self.makeFinalQuery().lower()
 
         self.queryJob = self.bqClient.query(
             self.makeFinalQuery(),

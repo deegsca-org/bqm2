@@ -128,7 +128,6 @@ def load_query_job_config(table, jobconfigpath, templatevars):
         job_config = bigquery.QueryJobConfig()
         job_config.allow_large_results = True
         job_config.flatten_results = False
-        job_config.use_legacy_sql = False
         job_config.destination = table
         job_config.write_disposition = WriteDisposition.WRITE_TRUNCATE
         return job_config
