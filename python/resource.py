@@ -300,8 +300,9 @@ class BqProcessTableResource(BqTableBasedResource):
         if self == other:
             return False
 
-        filtered = getFiltered(self.query)
-        if strictSubstring("".join(["", other.key(), " "]), filtered):
+        if not hasattr(self, "filtered"):
+            self.filtered = getFiltered(self.query)
+        if strictSubstring("".join(["", other.key(), " "]), self.filtered):
             return True
 
             # we need a better way!
@@ -724,10 +725,10 @@ class BqGcsTableLoadResource(BqTableBasedResource):
         if self == other:
             return False
 
-        gcsremoved = re.sub('^gs:.*$', "\n", self.query)
-        filtered = getFiltered(gcsremoved)
-
-        if strictSubstring("".join(["", other.key(), " "]), filtered):
+        if not hasattr(self, "filtered"):
+            gcsremoved = re.sub('^gs:.*$', "\n", self.query)
+            self.filtered = getFiltered(gcsremoved)
+        if strictSubstring("".join(["", other.key(), " "]), self.filtered):
             return True
 
         return False
@@ -809,8 +810,9 @@ class BqQueryBasedResource(BqTableBasedResource):
         if self == other:
             return False
 
-        filtered = getFiltered(self.makeFinalQuery())
-        if strictSubstring("".join(["", other.key(), " "]), filtered):
+        if not hasattr(self, "filtered"):
+            self.filtered = getFiltered(self.makeFinalQuery())
+        if strictSubstring("".join(["", other.key(), " "]), self.filtered):
             return True
 
             # we need a better way!
@@ -1119,8 +1121,9 @@ def legacyBqQueryDependsOn(self, other: Resource):
         return False
 
     if 'query' in dir(self):
-        filtered = getFiltered(self.query)
-        if strictSubstring("".join(["", other.key(), " "]), filtered):
+        if not hasattr(self, "filtered"):
+            self.filtered = getFiltered(self.query)
+        if strictSubstring("".join(["", other.key(), " "]), self.filtered):
             return True
 
         # we need a better way!
