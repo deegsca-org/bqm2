@@ -1,1 +1,3 @@
+#legacysql
+
 select * from {dataset}.two, {dataset}.three
