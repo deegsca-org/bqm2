@@ -10,8 +10,10 @@ from time import sleep
 
 from collections import defaultdict
 
+import sys
 from google.cloud import storage
 from google.cloud.bigquery.client import Client
+from google.cloud.bigquery.job import QueryJobConfig
 
 from loader import DelegatingFileSuffixLoader, \
     BqQueryTemplatingFileLoader, BqDataFileLoader, \
