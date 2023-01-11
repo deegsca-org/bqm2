@@ -69,33 +69,52 @@ class BqJobs:
         a map keyed by project/dataset/table/ the first job
         encountered for that any table.
         """
-        iter = self.bqClient.list_jobs(max_results=self.pageSize,
-                                       state_filter=state)
+        jiter = self.bqClient.list_jobs(max_results=self.pageSize,
+                                        state_filter=state)
         while True:
-            for t in iter:
-                if t.destination:
-                    tableKey = _buildDataSetTableKey_(t.destination)
-                    if tableKey in self.tableToJobMap:
-                        continue
-                    self.tableToJobMap[tableKey] = t
+            for t in jiter:
+                print("looking at: ", t.job_id)
+                jobid_prefix = build_jobid_prefix_key_from_jobid(t.job_id)
+                if not jobid_prefix:
+                    continue
 
-            if not iter.next_page_token:
+                if jobid_prefix in self.tableToJobMap:
+                    continue
+                print("adding key to map: ", jobid_prefix)
+                self.tableToJobMap[jobid_prefix] = t
+
+            if not jiter.next_page_token:
                 break
             if iter.page_number > self.page_limit:
                 break
-            iter = self.bqClient.list_jobs(max_results=self.pageSize,
-                                           page_token=iter.next_page_token,
+            jiter = self.bqClient.list_jobs(max_results=self.pageSize,
+                                           page_token=jiter.next_page_token,
                                            state_filter=state)
         print("finished jobs load for ", state)
 
     def loadTableJobs(self):
         [self.__loadTableJobs__(state) for state in ['running', 'pending']]
 
-    def getJobForTable(self, table: Table):
-        key = _buildDataSetTableKey_(table)
+    def getJobForTable(self, table: Table, type: str):
+        key = build_jobid_prefix_from_type_and_table(type, table)
         if key in self.tableToJobMap:
             return self.tableToJobMap[key]
         return None
+
+
+def build_jobid_from_type_and_table(type: str, table: Table):
+    return "-".join([type, table.dataset_id, table.table_id])
+
+
+def build_jobid_prefix_from_type_and_table(type: str, table: Table):
+    return "-".join([type, table.dataset_id, table.table_id])
+
+
+def build_jobid_prefix_key_from_jobid(jobid: str):
+    parts = jobid.split("-")
+    if len(parts) >= 3:
+        return "-".join(parts[:3])
+    return None
 
 
 def _buildFullyQualifiedTableName_(table: Table) -> str:
@@ -285,6 +304,8 @@ class BqProcessTableResource(BqTableBasedResource):
         self.bqClient = bqClient
         self.schema = schema
         self.job = job
+        if self.job:
+            print(f"found existing job: {self.job.job_id}")
 
     def exists(self):
         try:
@@ -385,6 +406,7 @@ class BqProcessTableResource(BqTableBasedResource):
             if srcFormat != SourceFormat.CSV:
                 fieldDelimiter = None
 
+        # TODO: allow separate file for declaration as with queryjobconfig
         job_config = bigquery.LoadJobConfig(
             source_format=srcFormat,
             field_delimiter=fieldDelimiter, ignore_unknown_values=True,
@@ -392,10 +414,12 @@ class BqProcessTableResource(BqTableBasedResource):
             schema=self.schema)
 
         with open(datascript, "rb") as source_file:
+            job_id = makeJobName("create", self.table.dataset_id, self.table.table_id)
             self.job \
                 = self.bqClient.load_table_from_file(source_file,
                                                      self.table,
-                                                     job_config=job_config)
+                                                     job_config=job_config,
+                                                     job_id=job_id)
 
     def key(self):
         return ".".join([self.table.dataset_id, self.table.table_id])
@@ -444,6 +468,9 @@ class BqDataLoadTableResource(BqTableBasedResource):
         self.bqClient = bqClient
         self.schema = schema
         self.job = job
+        if self.job:
+            print(f"found existing job: {self.job.job_id}")
+
 
     def exists(self):
         try:
@@ -486,6 +513,7 @@ class BqDataLoadTableResource(BqTableBasedResource):
             if srcFormat != SourceFormat.CSV:
                 fieldDelimiter = None
 
+        # TODO: make this flexible as with QueryJobConfig
         job_config = bigquery.LoadJobConfig()
         job_config.source_format = srcFormat
         job_config.schema = self.table.schema
@@ -494,11 +522,13 @@ class BqDataLoadTableResource(BqTableBasedResource):
         job_config.autodetect = True
         job_config.write_disposition = WriteDisposition.WRITE_TRUNCATE
 
+        job_id = makeJobName("create", self.table.dataset_id, self.table.table_id)
         with open(self.file, 'rb') as readable:
             job = self.bqClient.load_table_from_file(
                 readable,
                 self.table,
-                job_config=job_config
+                job_config=job_config,
+                job_id=job_id
                 )
         self.job = job
 
@@ -892,6 +922,8 @@ class BqQueryBackedTableResource(BqQueryBasedResource):
         super(BqQueryBackedTableResource, self)\
             .__init__(query, table, bqClient)
         self.queryJob = queryJob
+        if self.queryJob:
+            print(f"found running/pending job table: {self.queryJob}")
         self.expiration = expiration
         self.queryJobConfig = queryJobConfig
 
@@ -988,6 +1020,8 @@ class BqExtractTableResource(Resource):
                  options: dict):
 
         self.extractJob = extractJob
+        if self.extractJob:
+            print(f"found existing job: {self.extractJob.job_id}")
         self.table = table
         self.bqClient = bqClient
         self.gcsClient = gcsClient
@@ -997,8 +1031,7 @@ class BqExtractTableResource(Resource):
         self.options = options
 
     def create(self):
-        jobid = "-".join(["extract", self.table.table_id,
-                          self.table.table_id, str(uuid.uuid4())])
+        jobid = makeJobName(["extract", self.table.dataset_id, self.table.table_id])
         self.extractJob = self.bqClient.extract_table(
                 self.table,
                 self.uris,
@@ -1070,7 +1103,7 @@ def isJobRunning(job):
         return False
 
     job.reload()
-    print(job.job_id, job.state, job.errors)
+    print(job.job_id, job.state, job.errors or job.error_result)
     return job.running()
 
 

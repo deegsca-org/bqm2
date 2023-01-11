@@ -617,3 +617,14 @@ There is an integration test /int-test/test-basic.sh which is run on pull reques
 # known issues
 
   - The descriptions of tables can end up being too long and interfere with execution and saving of results.  A fix is in the works as of 2022/11/14.
+
+# script and .queryjobconfig scenarios
+
+2023/01/10
+
+We're enabling execution of multi-statement sql.  We're also enabling another means of controlling parameters of normal .querytemplate and .uniontable executions.
+
+- .uniontables may not be scripts at this time
+- script with and w/o queryconfig file
+- uniontable with queryconfig file
+- querytemplate with / with out queryconfig file

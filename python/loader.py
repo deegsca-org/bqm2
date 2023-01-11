@@ -121,23 +121,27 @@ def cacheDataSet(bqClient: Client, bqTable: Table, datasets: dict):
         datasets[dsetKey] = BqDatasetBackedResource(dataset, bqClient)
     return datasets[dsetKey]
 
+IS_SCRIPT_KEY = "is_script"
 
 def load_query_job_config(table, jobconfigpath, templatevars):
-
     if not os.path.exists(jobconfigpath):
         job_config = bigquery.QueryJobConfig()
         job_config.allow_large_results = True
         job_config.flatten_results = False
-        job_config.destination = table
-        job_config.write_disposition = WriteDisposition.WRITE_TRUNCATE
+        if templatevars.get(IS_SCRIPT_KEY, False) is False:
+            job_config.destination = table
+            job_config.write_disposition = WriteDisposition.WRITE_TRUNCATE
+
         return job_config
 
     with open(jobconfigpath, 'r') as f:
         try:
             # first as yaml
             obj = yaml.safe_load(f.read().format(**templatevars))
-            job_config = QueryJobConfig().from_api_repr(obj)
-            #job_config.destination = table
+            job_config = QueryJobConfig.from_api_repr(obj)
+            print(obj)
+            if templatevars.get(IS_SCRIPT_KEY, False) is False:
+                job_config.destination = table
             return job_config
         except Exception as e:
             raise Exception(f"unable to load {jobconfigpath} as yaml", e)
@@ -284,7 +288,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
                 expiration = None
 
         if self.tableType == TableType.TABLE:
-            jT = self.bqJobs.getJobForTable(bqTable)
+            jT = self.bqJobs.getJobForTable(bqTable, "create")
             qjobconfig = load_query_job_config(bqTable,
                                                filePath + ".queryjobconfig",
                                                templateVars)
@@ -297,13 +301,11 @@ class BqQueryTemplatingFileLoader(FileLoader):
             # check if there is extraction logic
             # todo: we need to populate the extraction job
             if 'extract' in templateVars:
+                extract_job = self.bqJobs.getJobForTable(bqTable, "extract")
                 extractRsrc \
                     = BqExtractTableResource(bqTable,
                                              self.bqClient,
-                                             self.gcsClient, None,
-                                             # TODO: need to discover
-                                             # other jobs previously
-                                             # running
+                                             self.gcsClient, extract_job,
                                              templateVars['extract'],
                                              templateVars)
                 out[extractRsrc.key()] = extractRsrc
@@ -313,7 +315,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
             out[key] = arsrc
 
         elif self.tableType == TableType.TABLE_GCS_LOAD:
-            jT = self.bqJobs.getJobForTable(bqTable)
+            jT = self.bqJobs.getJobForTable(bqTable, "create")
 
             schema = None
             if "source_format" not in templateVars:
@@ -339,7 +341,8 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                                    filePath
                                                    + ".queryjobconfig",
                                                    templateVars)
-                jT = self.bqJobs.getJobForTable(bqTable)
+                print(json.dumps(qjobconfig.to_api_repr()))
+                jT = self.bqJobs.getJobForTable(bqTable, "create")
                 arsrc = BqQueryBackedTableResource([query], bqTable,
                                                    self.bqClient,
                                                    queryJob=jT,
@@ -357,7 +360,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
                 out[key] = arsrc
 
         elif self.tableType == TableType.BASH_TABLE:
-            jT = self.bqJobs.getJobForTable(bqTable)
+            jT = self.bqJobs.getJobForTable(bqTable, "create")
             stripped = self.cached_file_read(filePath + ".schema").strip()
             schema = loadSchemaFromString(stripped)
             # with open(filePath + ".schema") as schemaFile:
@@ -470,7 +473,7 @@ class BqDataFileLoader(FileLoader):
         with open(schemaFilePath) as schemaFile:
             schema = loadSchemaFromString(schemaFile.read().strip())
 
-        jT = self.bqJobs.getJobForTable(bqTable)
+        jT = self.bqJobs.getJobForTable(bqTable, "create")
 
         ret = []
         ret.append(BqDataLoadTableResource(filePath, bqTable, schema,
