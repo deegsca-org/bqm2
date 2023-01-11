@@ -266,6 +266,8 @@ class BqQueryTemplatingFileLoader(FileLoader):
                             missing + " in a file: ",
                             filePath + ".vars")
         query = template.format(**templateVars)
+        legacySql = "#legacysql" in query.lower()
+
         table = templateVars['table']
         project = None
         if 'project' in templateVars:
@@ -292,6 +294,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
             qjobconfig = load_query_job_config(bqTable,
                                                filePath + ".queryjobconfig",
                                                templateVars)
+            qjobconfig.use_legacy_sql = legacySql
             arsrc = BqQueryBackedTableResource([query], bqTable,
                                                self.bqClient,
                                                queryJob=jT,
@@ -346,6 +349,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                                    filePath
                                                    + ".queryjobconfig",
                                                    templateVars)
+                qjobconfig.use_legacy_sql = legacySql
                 jT = self.bqJobs.getJobForTable(bqTable, "create")
                 arsrc = BqQueryBackedTableResource([query], bqTable,
                                                    self.bqClient,

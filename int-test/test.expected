@@ -14,6 +14,7 @@ atest2.extract_test_localdata_json depends on atest2 atest2.test_local_tabbed_da
 atest2.extract_test_localdata_tab depends on atest2 atest2.test_local_tabbed_data
 atest2.hourly_test depends on atest2
 atest2.jsonupload depends on atest2
+atest2.legacy_sql depends on atest2
 atest2.load_three depends on atest2 extract.atest2.three
 atest2.mergelog_mini_sample depends on atest2
 atest2.monthly_test depends on atest2
