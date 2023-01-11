@@ -378,7 +378,7 @@ A querytemplate is treated as a template executed as a bigquery QueryJobConfig.
 Only legacy and standard sql variants of Biquery are available.  The default is standard sql.  
 
 In addition to an optional .vars file, an optional .queryjobconfig file may be specified.   The only accepted data format 
-for the queryjobconfig files is yaml.   
+for the queryjobconfig files is yaml. .queryjobconfig files are also handled as templates.  
 
 
 - Example .querytemplate file
