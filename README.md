@@ -258,6 +258,29 @@ This is the folder name of the current template.  Note if you specify your folde
 
 This var is not used much.
 
+- is_script
+
+The is_script variable is only applicable for .querytemplate.vars files.  
+
+The result of the setting the is_script var affects the 
+generated QueryJobConfig object which is passed to BigQuery for job execution.  
+
+In short, a destination table will NOT be set
+when the is_script variable is set.  As such, it is vitally important that 
+your script manage the creation of a table or view itself.  
+
+Doing so ensures that after 
+successful execution, your .querytemplate template aka script will not be repeatedly executed.
+
+Not doing so ensures that you script will be retried up to the maxRetries 
+setting of the bqm2.py program execution.
+
+bqm2 checks for the existence of 
+{dataset}.{table} before executing the querytemplate again.
+
+For more information about scripting in bigquery, checkout out this reference - https://cloud.google.com/bigquery/docs/multi-statement-queries
+
+
 ### special date based variables
 
 bqm2 allows a short hand for specifying relative to NOW date ranges. The specially interpreted variables are
@@ -352,9 +375,13 @@ We repeat the list of supported suffixes here before sharing details of each.
 ## .querytemplate
 A querytemplate is treated as a template executed as a bigquery QueryJobConfig.
 
-Both legacy and standard sql variants of Biquery are available.  THe default is legacy.  To use standard sql , the first line of query must be #standardSQL.
+Only legacy and standard sql variants of Biquery are available.  The default is standard sql.  
 
-- Example
+In addition to an optional .vars file, an optional .queryjobconfig file may be specified.   The only accepted data format 
+for the queryjobconfig files is yaml.   
+
+
+- Example .querytemplate file
 
 If your template is in a file named bar.querytemplate
 
@@ -382,6 +409,34 @@ select "foo" as colA
 
 And the results of that query will get stored in a table name ``` bar ```
 
+- An example .querytemplate.queryconfig file 
+
+```
+query:
+  allowLargeResults: true
+  clustering:
+    fields:
+      - a
+      - b
+  maximumBillingTier: 4
+  maximumBytesBilled: '10'
+  priority: BATCH
+  rangePartitioning:
+    field: foo
+  defaultDataset: null
+  createDisposition: CREATE_IF_NEEDED
+  timePartitioning:
+    type: DAY
+    field: x
+labels:
+  a: b
+```
+
+For information on the configurations for .queryjobconfig files available, read through 
+
+https://cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.job.QueryJobConfig
+
+
 ### special keys / vars
 - extract - this resolve to a gcs path your service account identity can read and write to/from.  This will trigger a bq extract jobs.
 - compression - relevant when extract is set.  Values GZIP, SNAPPY, DEFLATE, or NONE
@@ -390,7 +445,7 @@ And the results of that query will get stored in a table name ``` bar ```
 - print_header - relevant when extract is set AND destination_format = CSV.
   This must be a json boolean i.e bare true or false.  A string value throws exception.
 - expiration - table expiration in days from the create time of table
-
+- is_script - accepted values are json booleans.   See elsewhere in this doc for more detail on is_script var.  
 ## .view
 
 .views are just like .querytemplate but executed synchronously because at time of writing there's no async mode for creating views.
@@ -455,7 +510,13 @@ Now the result would be 2 views
 
 A union table performs a union all of each generated query mapped to the same table name and executes the resulting query and saves it as a table.
 
+
 Same logic as unionview.
+
+note: an error will be produced if the is_script variable is set in the .vars files for uniontable queries.
+
+In addition to an optional .vars file, an optional .queryjobconfig file may be specified.   The only accepted data format 
+for the queryjobconfig files is yaml.
 
 ## .localdata
 A localdata is a flat file of either tab separated data or new delimited json which may be uploaded to a table by the same name as the file itself.

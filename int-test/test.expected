@@ -1,6 +1,7 @@
 atest2 depends on nothing
 atest2.ametrics depends on atest2
-atest2.ametrics_non_empty depends on atest2 atest2.ametrics
+atest2.ametrics_assert_empty depends on atest2 atest2.ametrics
+atest2.ametrics_assert_non_empty depends on atest2 atest2.ametrics
 atest2.bashtemplate depends on atest2 atest2.one
 atest2.before depends on atest2 atest2.one
 atest2.complex_json_data depends on atest2
