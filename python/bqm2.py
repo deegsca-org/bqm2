@@ -330,8 +330,7 @@ if __name__ == "__main__":
             externaltable=BqQueryTemplatingFileLoader(loadClient, gcsClient,
                                                       bqJobs,
                                                       TableType.EXTERNAL_TABLE,
-                                                      kwargs)
-        )
+                                                      kwargs))
     )
 
     (resources, dependencies) = builder.buildDepend(args)
