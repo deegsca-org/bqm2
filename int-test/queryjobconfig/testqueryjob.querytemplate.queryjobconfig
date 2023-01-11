@@ -1,2 +1,4 @@
 ---
-  useLegacySql: false
+  # we want to not use legacy sql
+  query:
+    useLegacySql: false

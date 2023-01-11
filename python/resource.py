@@ -414,7 +414,7 @@ class BqProcessTableResource(BqTableBasedResource):
             schema=self.schema)
 
         with open(datascript, "rb") as source_file:
-            job_id = makeJobName("create", self.table.dataset_id, self.table.table_id)
+            job_id = makeJobName(["create", self.table.dataset_id, self.table.table_id])
             self.job \
                 = self.bqClient.load_table_from_file(source_file,
                                                      self.table,
@@ -522,7 +522,7 @@ class BqDataLoadTableResource(BqTableBasedResource):
         job_config.autodetect = True
         job_config.write_disposition = WriteDisposition.WRITE_TRUNCATE
 
-        job_id = makeJobName("create", self.table.dataset_id, self.table.table_id)
+        job_id = makeJobName(["create", self.table.dataset_id, self.table.table_id])
         with open(self.file, 'rb') as readable:
             job = self.bqClient.load_table_from_file(
                 readable,

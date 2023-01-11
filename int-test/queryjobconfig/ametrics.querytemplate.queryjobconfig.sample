@@ -1,0 +1,26 @@
+{
+  "query": {
+    "allowLargeResults": true,
+    "clustering": {
+      "fields": [
+        "a",
+        "b"
+      ]
+    },
+    "maximumBillingTier": 4,
+    "maximumBytesBilled": "10",
+    "priority": "BATCH",
+    "rangePartitioning": {
+      "field": "foo"
+    },
+    "defaultDataset": null,
+    "createDisposition": "CREATE_IF_NEEDED",
+    "timePartitioning": {
+      "type": "DAY",
+      "field": "x"
+    }
+  },
+  "labels": {
+    "a": "b"
+  }
+}

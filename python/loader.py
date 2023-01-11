@@ -139,7 +139,6 @@ def load_query_job_config(table, jobconfigpath, templatevars):
             # first as yaml
             obj = yaml.safe_load(f.read().format(**templatevars))
             job_config = QueryJobConfig.from_api_repr(obj)
-            print(obj)
             if templatevars.get(IS_SCRIPT_KEY, False) is False:
                 job_config.destination = table
             return job_config
@@ -265,7 +264,6 @@ class BqQueryTemplatingFileLoader(FileLoader):
                             missing + " in a file: ",
                             filePath + ".vars")
         query = template.format(**templateVars)
-        # print("formatting query: ", query)
         table = templateVars['table']
         project = None
         if 'project' in templateVars:
@@ -341,7 +339,6 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                                    filePath
                                                    + ".queryjobconfig",
                                                    templateVars)
-                print(json.dumps(qjobconfig.to_api_repr()))
                 jT = self.bqJobs.getJobForTable(bqTable, "create")
                 arsrc = BqQueryBackedTableResource([query], bqTable,
                                                    self.bqClient,

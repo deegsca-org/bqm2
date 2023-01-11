@@ -1,3 +1,3 @@
-#legacysql
-
-select * from {dataset}.two, {dataset}.three
+select * from {dataset}.two
+union all 
+select * from {dataset}.three

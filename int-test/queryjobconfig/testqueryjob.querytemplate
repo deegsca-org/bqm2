@@ -36,4 +36,6 @@ ASSERT
   )
 AS 'Column X must contain the value 7919';
 
+
 create table {dataset}.{table} as select * from {table}
+

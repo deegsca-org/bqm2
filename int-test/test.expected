@@ -1,4 +1,6 @@
 atest2 depends on nothing
+atest2.ametrics depends on atest2
+atest2.ametrics_non_empty depends on atest2 atest2.ametrics
 atest2.bashtemplate depends on atest2 atest2.one
 atest2.before depends on atest2 atest2.one
 atest2.complex_json_data depends on atest2
@@ -25,6 +27,7 @@ atest2.test_local_json_data depends on atest2
 atest2.test_local_tabbed_data depends on atest2
 atest2.test_parquet depends on atest2
 atest2.test_unionview depends on atest2 atest2.test_ab atest2.test_cd
+atest2.testqueryjob depends on atest2
 atest2.three depends on atest2
 atest2.two depends on atest2
 atest2.yearly_test depends on atest2
