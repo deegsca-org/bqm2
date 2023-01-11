@@ -121,7 +121,9 @@ def cacheDataSet(bqClient: Client, bqTable: Table, datasets: dict):
         datasets[dsetKey] = BqDatasetBackedResource(dataset, bqClient)
     return datasets[dsetKey]
 
+
 IS_SCRIPT_KEY = "is_script"
+
 
 def load_query_job_config(table, jobconfigpath, templatevars):
     if not os.path.exists(jobconfigpath):
@@ -331,6 +333,11 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                           templateVars)
             out[key] = rsrc
         elif self.tableType == TableType.UNION_TABLE:
+            # disallow scripts
+            if templateVars.get(IS_SCRIPT_KEY, False) is True:
+                raise Exception(f"{IS_SCRIPT_KEY} is not allowed "
+                                f"for union tables")
+
             if key in out:
                 arsrc = out[key]
                 arsrc.addQuery(query)

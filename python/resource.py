@@ -88,8 +88,8 @@ class BqJobs:
             if iter.page_number > self.page_limit:
                 break
             jiter = self.bqClient.list_jobs(max_results=self.pageSize,
-                                           page_token=jiter.next_page_token,
-                                           state_filter=state)
+                                            page_token=jiter.next_page_token,
+                                            state_filter=state)
         print("finished jobs load for ", state)
 
     def loadTableJobs(self):
@@ -414,7 +414,8 @@ class BqProcessTableResource(BqTableBasedResource):
             schema=self.schema)
 
         with open(datascript, "rb") as source_file:
-            job_id = makeJobName(["create", self.table.dataset_id, self.table.table_id])
+            job_id = makeJobName(["create", self.table.dataset_id,
+                                  self.table.table_id])
             self.job \
                 = self.bqClient.load_table_from_file(source_file,
                                                      self.table,
@@ -471,7 +472,6 @@ class BqDataLoadTableResource(BqTableBasedResource):
         if self.job:
             print(f"found existing job: {self.job.job_id}")
 
-
     def exists(self):
         try:
             self.bqClient.get_table(self.table)
@@ -522,7 +522,8 @@ class BqDataLoadTableResource(BqTableBasedResource):
         job_config.autodetect = True
         job_config.write_disposition = WriteDisposition.WRITE_TRUNCATE
 
-        job_id = makeJobName(["create", self.table.dataset_id, self.table.table_id])
+        job_id = makeJobName(["create", self.table.dataset_id,
+                              self.table.table_id])
         with open(self.file, 'rb') as readable:
             job = self.bqClient.load_table_from_file(
                 readable,
@@ -1031,7 +1032,8 @@ class BqExtractTableResource(Resource):
         self.options = options
 
     def create(self):
-        jobid = makeJobName(["extract", self.table.dataset_id, self.table.table_id])
+        jobid = makeJobName(["extract", self.table.dataset_id,
+                             self.table.table_id])
         self.extractJob = self.bqClient.extract_table(
                 self.table,
                 self.uris,
