@@ -5,7 +5,7 @@ query:
       - a
       - b
   maximumBillingTier: 4
-  maximumBytesBilled: '10'
+  maximumBytesBilled: 10000
   priority: BATCH
   rangePartitioning:
     field: foo
