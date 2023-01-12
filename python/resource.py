@@ -102,10 +102,6 @@ class BqJobs:
         return None
 
 
-def build_jobid_from_type_and_table(type: str, table: Table):
-    return "-".join([type, table.dataset_id, table.table_id])
-
-
 def build_jobid_prefix_from_type_and_table(type: str, table: Table):
     return "-".join([type, table.dataset_id, table.table_id])
 
