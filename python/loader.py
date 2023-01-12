@@ -1,5 +1,4 @@
 import json
-import os.path
 from json.decoder import JSONDecodeError
 
 import yaml
@@ -8,6 +7,7 @@ from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import Table
 from os.path import getmtime
+import os
 from enum import Enum
 from google.cloud import storage, bigquery
 from google.cloud.exceptions import NotFound
@@ -206,22 +206,17 @@ class BqQueryTemplatingFileLoader(FileLoader):
     def explodeTemplateVarsArray(rawTemplates: list,
                                  folder: str,
                                  filename: str,
+                                 localVars: dict,
                                  defaultVars: dict):
         ret = []
         for t in rawTemplates:
             copy = t.copy()
             copy['folder'] = folder
             copy['filename'] = filename
-            if 'dataset' not in copy:
-                copy['dataset'] = defaultVars['dataset']
-            if 'project' not in copy:
-                copy['project'] = defaultVars['project']
             if 'table' not in copy:
                 copy['table'] = filename
 
-            for (k, v) in defaultVars.items():
-                if k not in copy:
-                    copy[k] = v
+            copy = {**defaultVars, **localVars, **copy}
 
             ret += [evalTmplRecurse(t) for t in explodeTemplate(copy)]
 
@@ -418,12 +413,16 @@ class BqQueryTemplatingFileLoader(FileLoader):
             template = f.read()
             try:
                 filename = filePath.split("/")[-1].split(".")[-2]
+                localVarsPath = os.path.join(os.path.dirname(filePath), "local.vars")
                 folder = filePath.split("/")[-2]
                 templateVars = \
                     BqQueryTemplatingFileLoader.explodeTemplateVarsArray(
-                        self.loadTemplateVars(
-                            filePath + ".vars"), folder, filename,
-                        self.defaultVars)
+                        self.loadTemplateVars(filePath + ".vars"),
+                        folder,
+                        filename,
+                        self.loadLocalVars(localVarsPath),
+                        self.defaultVars
+                    )
 
             except FileNotFoundError:
                 raise Exception("Please define template vars in a file "
@@ -433,16 +432,20 @@ class BqQueryTemplatingFileLoader(FileLoader):
                 self.processTemplateVar(v, template, filePath, mtime, ret)
         return ret.values()
 
-    def loadTemplateVars(self, filePath) -> list:
-        """
+    def loadLocalVars(self, filePath):
+        localVars = dict()
+        if filePath \
+            and os.path.exists(filePath) \
+                and os.path.isfile(filePath):
+            with open(filePath) as f:
+                localVars = json.load(f)
+                if not isinstance(localVars, dict):
+                    raise Exception(
+                        "Must be single json object in "
+                        + filePath)
+        return localVars
 
-        Args:
-            filePath: The json file to load must be a list of dictionaries
-
-        Returns:
-            A list of dict
-
-        """
+    def loadTemplateVars(self, filePath, localVarsPath=None) -> list:
         try:
             with open(filePath) as f:
                 templateVarsList = json.loads(f.read())
@@ -453,6 +456,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
                     if not isinstance(definition, dict):
                         raise Exception(
                             "Must be json list of objects in " + filePath)
+
                 return templateVarsList
         except FileNotFoundError:
             return [{}]

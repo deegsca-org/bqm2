@@ -264,8 +264,9 @@ class BqTableBasedResource(Resource):
         raise Exception("implement")
 
     def key(self):
-        return ".".join([self.table.dataset_id,
-                         self.table.table_id])
+        if not hasattr(self, "_key"):
+            self._key = f"{self.table.dataset_id}.{self.table.table_id}"
+        return self._key
 
     def dependsOn(self, other: Resource):
         raise Exception("implement this function")
@@ -422,9 +423,6 @@ class BqProcessTableResource(BqTableBasedResource):
                                                      job_config=job_config,
                                                      job_id=job_id)
 
-    def key(self):
-        return ".".join([self.table.dataset_id, self.table.table_id])
-
     def isRunning(self):
         return isJobRunning(self.job)
 
@@ -532,9 +530,6 @@ class BqDataLoadTableResource(BqTableBasedResource):
                 job_id=job_id
                 )
         self.job = job
-
-    def key(self):
-        return ".".join([self.table.dataset_id, self.table.table_id])
 
     def dependsOn(self, resource: Resource):
         return self.table.dataset_id == resource.key()
@@ -742,10 +737,6 @@ class BqGcsTableLoadResource(BqTableBasedResource):
     def shouldUpdate(self):
         return False
 
-    def key(self):
-        return ".".join([self.table.dataset_id,
-                         self.table.table_id])
-
     def __eq__(self, other):
         try:
             return self.key() == other.key() and self.uris == other.uris
@@ -827,10 +818,6 @@ class BqQueryBasedResource(BqTableBasedResource):
     def create(self):
         raise Exception("implement")
 
-    def key(self):
-        return ".".join([self.table.dataset_id,
-                         self.table.table_id])
-
     def dependsOn(self, other: Resource):
         return self.legacyBqQueryDependsOn(other)
 
@@ -906,7 +893,7 @@ class BqViewBackedTableResource(BqQueryBasedResource):
 
 
 def getFiltered(query):
-    return re.sub('[^0-9a-zA-Z._]+', ' ', query)
+    return (re.sub('[^0-9a-zA-Z._]+', ' ', query).rstrip() + ' ')
 
 
 def strictSubstring(contained, container):
@@ -959,9 +946,6 @@ class BqQueryBackedTableResource(BqQueryBasedResource):
                 self.bqClient.update_table(table, ['expires'])
 
             self.queryJob.add_done_callback(done_callback)
-
-    def key(self):
-        return ".".join([self.table.dataset_id, self.table.table_id])
 
     def isRunning(self):
         return isJobRunning(self.queryJob)
@@ -1042,8 +1026,9 @@ class BqExtractTableResource(Resource):
                 )
 
     def key(self):
-        return ".".join(["extract", self.table.dataset_id,
-                         self.table.table_id])
+        if not hasattr(self, "_key"):
+            self._key = f"extract.{self.table.dataset_id}.{self.table.table_id}"
+        return self._key
 
     def isRunning(self):
         return isJobRunning(self.extractJob)
@@ -1202,10 +1187,6 @@ class BqExternalTableBasedResource(BqTableBasedResource):
         # update description - for some reason this can't be done
         # on create???
         self.bqClient.update_table(self.table, ["description"])
-
-    def key(self):
-        return ".".join([self.table.dataset_id,
-                         self.table.table_id])
 
     def dependsOn(self, resource: Resource):
         if self.table.dataset_id == resource.key():
