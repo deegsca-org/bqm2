@@ -657,6 +657,11 @@ There is an integration test /int-test/test-basic.sh which is run on pull reques
   - deal with M1 and other mac platform types for local execution
   - platform type is hard coded in /run.sh
 
+- function support
+  - might already be supported.. (Mike Lee)
+  - javascript udfs get wonky due to curly braces in js functions (easy solution is to exclude templating code blocks in triple quotes)
+  - current solution is make all js functions with curly braces into a single line and double the braces to work with python format
+
 - integration tests
   - we should switch from creating a new dataset for each run and instead have 
   a single dataset with very tight default expiration set

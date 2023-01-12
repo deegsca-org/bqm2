@@ -137,81 +137,121 @@ class DependencyExecutor:
                             rsrcKey)
 
     def execute(self, checkFrequency=10, maxConcurrent=10):
-        running = set([])
         retries = defaultdict(lambda: self.maxRetry)
+        running = set([])
 
         # def update times is a dict of maximum of the update
         # times of the dependencies of a resource
+        """
+        i.e., self.dependencies = {
+           "table1": {"table_that_table1_depends_on"},
+           "table_that_table1_depends_on": {},
+        }
+
+        We loop through this and execute keys with no dependencies.
+        When each finishes, we remove that from the values
+            of all other keys that contain it
+        """
 
         depUpdateTimes = defaultdict(lambda: 0)
         while len(self.dependencies):
             todel = set([])
+            completed = set([])
             for n in sorted(self.dependencies.keys()):
                 if not len(self.dependencies[n]):
                     todel.add(n)
 
             """ flag to capture if anything was running.  If so,
-            we will pause before looping again """
-            for n in sorted(todel):
+            we will pause before looping again.
+            Check running tasks first to clear them, then others"""
+            for n in sorted(todel, key=lambda k: (int(k not in running), k)):
+                # check if it's already running
                 if (self.resources[n].isRunning()):
                     print(self.resources[n], "already running")
                     running.add(n)
+                    # continue so we can check other resource statuses
                     continue
                 else:
                     running.discard(n)
+                # check if it doesn't exist in bq
                 if not self.resources[n].exists():
+                    # break on max concurrency
                     if len(running) >= maxConcurrent:
                         print("max concurrent running already")
-                        continue
+                        # continue so we can check other resource statuses
+                        break
                     self.handleRetries(retries, n)
+                    # try to create resource
                     print("executing: because it doesn't exist ", n)
                     self.resources[n].create()
+                    # confirm resource is actually running
+                    # this prints <job_id> <status> <response>
                     if (self.resources[n].isRunning()):
                         running.add(n)
+                    # continue so we can check other resource statuses
+                    continue
+                # check if the query hash has changed
+                # by checking the description for it
                 elif self.resources[n].shouldUpdate():
+                    # break on max concurrency
                     if len(running) >= maxConcurrent:
                         print("max concurrent running already")
-                        continue
+                        # continue so we can check other resource statuses
+                        break
                     self.handleRetries(retries, n)
                     print("executing: because our definition has changed",
                           n, self.resources[n])
+                    # recreate resource again
                     self.resources[n].create()
-                    running.add(n)
+                    # confirm resource is running
+                    if (self.resources[n].isRunning()):
+                        running.add(n)
+                    # continue so we can check other resource statuses
+                    continue
+                # check if dependencies were updated more recently than resource
+                # if so, we should regenerate resource since dependencies
+                #     may have changed.
                 elif self.resources[n].updateTime() < depUpdateTimes[n]:
+                    # break on max concurrency
                     if len(running) >= maxConcurrent:
                         print("max concurrent running already")
-                        continue
+                        # continue so we can check other resource statuses
+                        break
                     self.handleRetries(retries, n)
                     print("executing: because our dependencies have "
                           "changed since we last ran",
                           n, self.resources[n])
+                    # recreate resource again
                     self.resources[n].create()
-                    running.add(n)
+                    # confirm resource is running
+                    if (self.resources[n].isRunning()):
+                        running.add(n)
+                    # continue so we can check other resource statuses
+                    continue
+                # otherwise, nothing to do but cleanup
                 else:
                     print(self.resources[n],
                           " resource exists and is up to date")
+                    # delete from dependency dict
                     del self.dependencies[n]
-                    if n in running:
-                        running.remove(n)
+                    # remove from running set (if in there)
+                    running.discard(n)
+                    completed.add(n)
 
-                if len(running) >= maxConcurrent:
-                    print("max concurrent running already")
-                    break
+            # less n-squared
+            if completed:
+                for n in sorted(self.dependencies.keys()):
+                    intersect = set.intersection(self.dependencies[n], completed)
+                    if intersect:
+                        newDepUpdateTime = max(
+                            depUpdateTimes[n],
+                            *[self.resources[k].updateTime() for k in intersect],
+                        )
+                        depUpdateTimes[n] = newDepUpdateTime
+                        self.dependencies[n] = self.dependencies[n] - intersect
 
-            # n-squared
-            for n in sorted(self.dependencies.keys()):
-                torm = set([])
-                for k in self.dependencies[n]:
-                    if k in torm:
-                        continue
-                    if k not in self.dependencies:
-                        kDateTime = self.resources[k].updateTime()
-                        depUpdateTimes[n] = max(depUpdateTimes[n], kDateTime)
-                        torm.add(k)
-
-                self.dependencies[n] = self.dependencies[n] - torm
-
-            if len(self.dependencies):
+            # sleep if there is still work AND things are still running
+            if len(self.dependencies) and len(running):
                 sleep(checkFrequency)
 
 
