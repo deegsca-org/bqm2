@@ -1,12 +1,15 @@
 import json
 from json.decoder import JSONDecodeError
 
+import yaml
+from google.cloud.bigquery import WriteDisposition, QueryJobConfig
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import Table
 from os.path import getmtime
+import os
 from enum import Enum
-from google.cloud import storage
+from google.cloud import storage, bigquery
 from google.cloud.exceptions import NotFound
 
 import tmplhelper
@@ -119,6 +122,32 @@ def cacheDataSet(bqClient: Client, bqTable: Table, datasets: dict):
     return datasets[dsetKey]
 
 
+IS_SCRIPT_KEY = "is_script"
+
+
+def load_query_job_config(table, jobconfigpath, templatevars):
+    if not os.path.exists(jobconfigpath):
+        job_config = bigquery.QueryJobConfig()
+        job_config.allow_large_results = True
+        job_config.flatten_results = False
+        if templatevars.get(IS_SCRIPT_KEY, False) is False:
+            job_config.destination = table
+            job_config.write_disposition = WriteDisposition.WRITE_TRUNCATE
+
+        return job_config
+
+    with open(jobconfigpath, 'r') as f:
+        try:
+            # first as yaml
+            obj = yaml.safe_load(f.read().format(**templatevars))
+            job_config = QueryJobConfig.from_api_repr(obj)
+            if templatevars.get(IS_SCRIPT_KEY, False) is False:
+                job_config.destination = table
+            return job_config
+        except Exception as e:
+            raise Exception(f"unable to load {jobconfigpath} as yaml", e)
+
+
 class TableType(Enum):
     VIEW = 1
     TABLE = 2
@@ -177,22 +206,17 @@ class BqQueryTemplatingFileLoader(FileLoader):
     def explodeTemplateVarsArray(rawTemplates: list,
                                  folder: str,
                                  filename: str,
+                                 localVars: dict,
                                  defaultVars: dict):
         ret = []
         for t in rawTemplates:
             copy = t.copy()
             copy['folder'] = folder
             copy['filename'] = filename
-            if 'dataset' not in copy:
-                copy['dataset'] = defaultVars['dataset']
-            if 'project' not in copy:
-                copy['project'] = defaultVars['project']
             if 'table' not in copy:
                 copy['table'] = filename
 
-            for (k, v) in defaultVars.items():
-                if k not in copy:
-                    copy[k] = v
+            copy = {**defaultVars, **localVars, **copy}
 
             ret += [evalTmplRecurse(t) for t in explodeTemplate(copy)]
 
@@ -237,7 +261,8 @@ class BqQueryTemplatingFileLoader(FileLoader):
                             missing + " in a file: ",
                             filePath + ".vars")
         query = template.format(**templateVars)
-        # print("formatting query: ", query)
+        legacySql = "#legacysql" in query.lower()
+
         table = templateVars['table']
         project = None
         if 'project' in templateVars:
@@ -246,6 +271,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
         bqTable = self.bqClient.dataset(dataset,
                                         project=project).table(
                                             table.replace('-', '_'))
+        # todo - must we really exclude - from table names?
         key = _buildDataSetTableKey_(bqTable)
 
         prev = key in out and out[key] or None
@@ -259,22 +285,25 @@ class BqQueryTemplatingFileLoader(FileLoader):
                 expiration = None
 
         if self.tableType == TableType.TABLE:
-            jT = self.bqJobs.getJobForTable(bqTable)
+            jT = self.bqJobs.getJobForTable(bqTable, "create")
+            qjobconfig = load_query_job_config(bqTable,
+                                               filePath + ".queryjobconfig",
+                                               templateVars)
+            qjobconfig.use_legacy_sql = legacySql
             arsrc = BqQueryBackedTableResource([query], bqTable,
                                                self.bqClient,
                                                queryJob=jT,
+                                               queryJobConfig=qjobconfig,
                                                expiration=expiration)
             out[key] = arsrc
             # check if there is extraction logic
             # todo: we need to populate the extraction job
             if 'extract' in templateVars:
+                extract_job = self.bqJobs.getJobForTable(bqTable, "extract")
                 extractRsrc \
                     = BqExtractTableResource(bqTable,
                                              self.bqClient,
-                                             self.gcsClient, None,
-                                             # TODO: need to discover
-                                             # other jobs previously
-                                             # running
+                                             self.gcsClient, extract_job,
                                              templateVars['extract'],
                                              templateVars)
                 out[extractRsrc.key()] = extractRsrc
@@ -284,7 +313,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
             out[key] = arsrc
 
         elif self.tableType == TableType.TABLE_GCS_LOAD:
-            jT = self.bqJobs.getJobForTable(bqTable)
+            jT = self.bqJobs.getJobForTable(bqTable, "create")
 
             schema = None
             if "source_format" not in templateVars:
@@ -302,14 +331,25 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                           templateVars)
             out[key] = rsrc
         elif self.tableType == TableType.UNION_TABLE:
+            # disallow scripts
+            if templateVars.get(IS_SCRIPT_KEY, False) is True:
+                raise Exception(f"{IS_SCRIPT_KEY} is not allowed "
+                                f"for union tables")
+
             if key in out:
                 arsrc = out[key]
                 arsrc.addQuery(query)
             else:
-                jT = self.bqJobs.getJobForTable(bqTable)
+                qjobconfig = load_query_job_config(bqTable,
+                                                   filePath
+                                                   + ".queryjobconfig",
+                                                   templateVars)
+                qjobconfig.use_legacy_sql = legacySql
+                jT = self.bqJobs.getJobForTable(bqTable, "create")
                 arsrc = BqQueryBackedTableResource([query], bqTable,
                                                    self.bqClient,
                                                    queryJob=jT,
+                                                   queryJobConfig=qjobconfig,
                                                    expiration=expiration)
                 out[key] = arsrc
 
@@ -323,7 +363,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
                 out[key] = arsrc
 
         elif self.tableType == TableType.BASH_TABLE:
-            jT = self.bqJobs.getJobForTable(bqTable)
+            jT = self.bqJobs.getJobForTable(bqTable, "create")
             stripped = self.cached_file_read(filePath + ".schema").strip()
             schema = loadSchemaFromString(stripped)
             # with open(filePath + ".schema") as schemaFile:
@@ -373,12 +413,16 @@ class BqQueryTemplatingFileLoader(FileLoader):
             template = f.read()
             try:
                 filename = filePath.split("/")[-1].split(".")[-2]
+                localVarsPath = os.path.join(os.path.dirname(filePath), "local.vars")
                 folder = filePath.split("/")[-2]
                 templateVars = \
                     BqQueryTemplatingFileLoader.explodeTemplateVarsArray(
-                        self.loadTemplateVars(
-                            filePath + ".vars"), folder, filename,
-                        self.defaultVars)
+                        self.loadTemplateVars(filePath + ".vars"),
+                        folder,
+                        filename,
+                        self.loadLocalVars(localVarsPath),
+                        self.defaultVars
+                    )
 
             except FileNotFoundError:
                 raise Exception("Please define template vars in a file "
@@ -388,7 +432,20 @@ class BqQueryTemplatingFileLoader(FileLoader):
                 self.processTemplateVar(v, template, filePath, mtime, ret)
         return ret.values()
 
-    def loadTemplateVars(self, filePath) -> list:
+    def loadLocalVars(self, filePath):
+        localVars = dict()
+        if filePath \
+            and os.path.exists(filePath) \
+                and os.path.isfile(filePath):
+            with open(filePath) as f:
+                localVars = json.load(f)
+                if not isinstance(localVars, dict):
+                    raise Exception(
+                        "Must be single json object in "
+                        + filePath)
+        return localVars
+
+    def loadTemplateVars(self, filePath, localVarsPath=None) -> list:
         try:
             with open(filePath) as f:
                 templateVarsList = json.loads(f.read())
@@ -399,6 +456,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
                     if not isinstance(definition, dict):
                         raise Exception(
                             "Must be json list of objects in " + filePath)
+
                 return templateVarsList
         except FileNotFoundError:
             return [{}]
@@ -427,7 +485,7 @@ class BqDataFileLoader(FileLoader):
         with open(schemaFilePath) as schemaFile:
             schema = loadSchemaFromString(schemaFile.read().strip())
 
-        jT = self.bqJobs.getJobForTable(bqTable)
+        jT = self.bqJobs.getJobForTable(bqTable, "create")
 
         ret = []
         ret.append(BqDataLoadTableResource(filePath, bqTable, schema,

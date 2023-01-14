@@ -1,0 +1,4 @@
+#standardSQL
+
+SELECT *
+FROM {dataset}.table_from_local_vars

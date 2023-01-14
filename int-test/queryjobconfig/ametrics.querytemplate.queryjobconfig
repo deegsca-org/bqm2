@@ -1,0 +1,6 @@
+---
+    query:
+        maximumBytesBilled: 12
+    labels:
+        name: {filename}
+        date: "20231201"

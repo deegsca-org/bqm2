@@ -1,0 +1,5 @@
+ASSERT
+    (SELECT count(1) from {dataset}.ametrics) > 0
+AS "table is empty!";
+
+create table `{dataset}.{table}` (dummy int)

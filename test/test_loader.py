@@ -224,7 +224,7 @@ class Test(unittest.TestCase):
 
         result = BqQueryTemplatingFileLoader\
                 .explodeTemplateVarsArray([template],
-                'afolder', 'afile', {"dataset": "adataset",
+                'afolder', 'afile', {}, {"dataset": "adataset",
                                      "project": "aproject"})
         expected = [{'filename': 'afile', 'folder': 'afolder', 'dataset':
                     'adataset', 'yyyymmdd': expectedDt[1], 'foo':
