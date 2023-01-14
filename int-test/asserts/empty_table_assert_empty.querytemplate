@@ -1,0 +1,5 @@
+assert(
+    (select count(1) from {dataset}.empty_table) = 0
+) as "table not empty";
+
+create table {dataset}.{table} (col int)
