@@ -7,7 +7,6 @@ cd $(dirname $0)
 
 . env.sh
 
-#docker build --platform linux/amd64 -t $imagename:$current_commit .
 docker build -t $imagename:$current_commit .
 
 if [[ ! -f ~/.vimrc ]]
