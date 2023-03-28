@@ -9,7 +9,7 @@ cd $(dirname $0)
 testfile=empty_table.localdata
 echo > $testfile
 
-python /python/bqm2.py --defaultDataset ${dataset} --execute . --maxRetry=1
+python -u -m bqm2 --defaultDataset ${dataset} --execute . --maxRetry=1
 
 for row in 1 2 3
 do
@@ -18,7 +18,7 @@ done
 
 # unset auto exit on error
 set +e
-python /python/bqm2.py --defaultDataset ${dataset} --execute . --maxRetry=1 
+python -u -m bqm2 --defaultDataset ${dataset} --execute . --maxRetry=1 
 
 [ $? != 0 ]
 

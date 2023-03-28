@@ -9,6 +9,11 @@ from tmplhelper import explodeTemplate, handleDateField, evalTmplRecurse
 
 class Test(unittest.TestCase):
 
+    # ensures that we format any escaped {, or }
+    def testEvalTmplRecurseWithEscapedBraces(self):
+        i = {"a": '{{b}}'}
+        self.assertEqual({'a': '{b}'}, evalTmplRecurse(i))
+
     def testEvalTmplRecurseCircular(self):
         input = {"a": '{b}', 'b': "{a}"}
         try:
@@ -199,5 +204,5 @@ class Test(unittest.TestCase):
         self.assertEqual(expected, result)
 
 
-if __name__ == '__main__':
-    unittest.main()
+#if __name__ == '__main__':
+#    unittest.main()

@@ -26,6 +26,9 @@ def evalTmplRecurse(templateKeys: dict):
         if len(keys):
             keysNeeded[k] = keys
         else:
+            # format removes any {.} escaping
+            if isinstance(templateKeysCopy[k], str):
+                templateKeysCopy[k] = templateKeysCopy[k].format()
             usableKeys[k] = templateKeysCopy[k]
 
     while len(keysNeeded):

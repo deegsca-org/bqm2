@@ -7,4 +7,4 @@ cd $(dirname $0)
 
 . env.sh
  
-python /python/bqm2.py --defaultProject ${PROJECT} --defaultDataset ${DEFAULT_DATASET} --execute . --maxConcurrent=10 --maxRetry=200
+python -u -m bqm2 --defaultProject ${PROJECT} --defaultDataset ${DEFAULT_DATASET} --execute . --maxConcurrent=10 --maxRetry=200

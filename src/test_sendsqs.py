@@ -18,5 +18,5 @@ class Test(unittest.TestCase):
             .send_message.assert_called_with(MessageBody='message')
         sqs.create_queue.assert_not_called()
 
-if __name__ == '__main__':
-    unittest.main()
+#if __name__ == '__main__':
+#    unittest.main()
