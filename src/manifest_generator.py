@@ -34,7 +34,7 @@ def list_blobs(bucket: str, prefix: str):
     """
     client = storage.Client()
     bucket = client.get_bucket(bucket_or_name=bucket)
-    blobs = bucket.list_blobs(prefix=prefix)
+    blobs = bucket.list_blobs(prefix=prefix, delimiter='/')
     return blobs
 
 
@@ -54,8 +54,9 @@ def create_entries(blobs, suffix):
 
 
 def generate_manifest(
-    data_path: str = None,
+    source_prefix: str = None,
     filematch_suffix: str = None,
+    target_prefix: str = None,
     manifest_path: str = None,
     dry_run: bool = True,
 ):
@@ -67,7 +68,7 @@ def generate_manifest(
         "entries": []
     }
 
-    data_bucket, data_prefix = split_uri(data_path)
+    data_bucket, data_prefix = split_uri(source_prefix)
     manifest_bucket, manifest_prefix = split_uri(manifest_path)
 
     if manifest_prefix.endswith("/"):
@@ -78,15 +79,32 @@ def generate_manifest(
             """
         )
 
+    if not data_prefix.endswith("/"):
+        raise Exception(
+            f"""
+            The data path argument provided
+            ({data_prefix}) should end with a trailing slash
+            """
+        )
+
+    if not target_prefix.endswith("/"):
+        raise Exception(
+            f"""
+            The target s3 path argument provided
+            ({target_prefix}) should end with a trailing slash
+            """
+        )
+
     blobs = list_blobs(bucket=data_bucket, prefix=data_prefix)
     for blob in blobs:
         if blob.name.endswith(filematch_suffix):
+            tail = blob.name.split("/")[-1]
             entry = {
                 "meta": {
                     "content_length": blob.size
                 },
                 "mandatory": True,
-                "url": f"s3://{data_bucket}/{blob.name}"
+                "url": f"{target_prefix}{tail}"
             }
             output_dict["entries"].append(entry)
 
@@ -115,22 +133,24 @@ if __name__ == "__main__":
     DO NOT write to stdout (or print) any data besides
     the manifest json in the form of a string
 
-    - The data-path MUST specify a full gs uri
+    - The source-prefix MUST specify a full gs uri
     - The filematch-suffix does NOT support wildcards
     - The manifest-path MUST specify a gs uri ending in manifest
     (no trailing slash) (s3://bucket/prefix/manifest)
     """
     argument_parser = argparse.ArgumentParser()
-    argument_parser.add_argument("--data-path", type=str, required=True)
+    argument_parser.add_argument("--source-prefix", type=str, required=True)
     argument_parser.add_argument("--filematch-suffix", type=str, required=True)
+    argument_parser.add_argument("--target-prefix", type=str, required=True)
     argument_parser.add_argument("--manifest-path", type=str, required=True)
     argument_parser.add_argument("--dry-run", action='store_true')
 
     args = argument_parser.parse_args()
 
     generate_manifest(
-        args.data_path,
+        args.source_prefix,
         args.filematch_suffix,
+        args.target_prefix,
         args.manifest_path,
         args.dry_run
     )

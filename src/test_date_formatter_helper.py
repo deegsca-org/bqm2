@@ -73,8 +73,8 @@ class Test(unittest.TestCase):
         date_formatter_helper.helpers.format_all_date_keys(inp)
         self.assertEqual(inp, expected)
 
-if __name__ == '__main__':
-    import sys
-    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-
-    unittest.main()
+#if __name__ == '__main__':
+#    import sys
+#    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+#
+#    unittest.main()

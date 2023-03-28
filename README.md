@@ -19,7 +19,7 @@ bqm2 stands for BigQuery Materializer 2.   In short, it allows you to
 # Usage
 
 ```
-root@0055716555ea:/queries/demo1# python /python/bqm2.py
+root@0055716555ea:/queries/demo1# python -m bqm2
 Usage: [options] folder[ folder2[...]]
 
 Options:
@@ -50,7 +50,7 @@ Options:
   --maxRetry=MAXRETRY   Relevant to 'execute' mode. The maximum retries for
                         any single resource creation. Once this number is hit,
                         the program will exit non-zero
-  --varsFile=VARSFILE   A json file whose data can be refered to in view and
+  --varsFile=VARSFILE   A json or yaml file whose data can be refered to in view and
                         query templates.  Must be a simple dictionary whose
                         values are string, integers, or arrays of strings and
                         integers
@@ -185,7 +185,7 @@ For each template file, you may specify an optional .vars file which allows you 
 
 For example, if your template file is foo.querytemplate, its .vars file would need to be saved in foo.querytemplate.vars.
 
-The .vars files format is json.  The structure must be a json array of json objects.  It can be formatted or JSONL - a single line json array of obejcts.
+The .vars files format is json or yaml.  The structure must be an array of objects.
 
 ```
 [
@@ -256,8 +256,6 @@ select "{filename}" as template
 
 This is the folder name of the current template.  Note if you specify your folder as ., then your folder var will be named literal . .
 
-This var is not used much.
-
 - is_script
 
 The is_script variable is only applicable for .querytemplate.vars files.  
@@ -279,6 +277,15 @@ bqm2 checks for the existence of
 {dataset}.{table} before executing the querytemplate again.
 
 For more information about scripting in bigquery, checkout out this reference - https://cloud.google.com/bigquery/docs/multi-statement-queries
+
+- location
+
+When set in a .vars file which affects a .querytemplate or .uniontable, the location variable controls the location where the QueryJob is run.  This has been needed
+when executing LOAD .... FROM FILES ... with CONNECTION that use an OMNI connection.   To use an omni connection, it appears that all jobs must be run in the same region
+as the OMNI connection itself.  That said, data loaded may land outside of the OMNI region.
+
+If you try to use an omni connection and the execution errors complain that the connection is not found, you may need to set the location var in your .vars of the querytemplate.
+
 
 
 ### special date based variables
@@ -355,7 +362,7 @@ template vars for use based upon the same date sequence.
 
 ### global vars file OR --varsFile
 
-The global vars file (optional but recommended) is a file containing a single json object.
+The global vars file (optional but recommended) is a file containing a single json object or yaml object.
 You can set vars inside this which will be accessible to all templates.
 You may also override global vars within the individal .vars file of your template.
 
@@ -375,7 +382,7 @@ We repeat the list of supported suffixes here before sharing details of each.
 ## .querytemplate
 A querytemplate is treated as a template executed as a bigquery QueryJobConfig.
 
-Only legacy and standard sql variants of Biquery are available.  The default is standard sql.  
+Only legacy and standard sql variants of BigQuery are available.  The default is standard sql.  
 
 In addition to an optional .vars file, an optional .queryjobconfig file may be specified.   The only accepted data format 
 for the queryjobconfig files is yaml. .queryjobconfig files are also handled as templates.  
@@ -443,9 +450,9 @@ https://cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigq
 - destination_format - relevant when extract is set.  Values - PARQUET, AVRO, NEWLINE_DELIMITED_JSON, CSV
 - field_delimiter - relevant when extract is set.  Any single char.
 - print_header - relevant when extract is set AND destination_format = CSV.
-  This must be a json boolean i.e bare true or false.  A string value throws exception.
+  This must be a json/yaml boolean i.e bare true or false.  A string value throws exception.
 - expiration - table expiration in days from the create time of table
-- is_script - accepted values are json booleans.   See elsewhere in this doc for more detail on is_script var.  
+- is_script - accepted values are json/yaml booleans.   See elsewhere in this doc for more detail on is_script var.  
 ## .view
 
 .views are just like .querytemplate but executed synchronously because at time of writing there's no async mode for creating views.
@@ -519,11 +526,20 @@ In addition to an optional .vars file, an optional .queryjobconfig file may be s
 for the queryjobconfig files is yaml.
 
 ## .localdata
-A localdata is a flat file of either tab separated data or new delimited json which may be uploaded to a table by the same name as the file itself.
+A localdata is a flat file of either tab separated data or new delimited json (NDJSON) which may be uploaded to a table by the same name as the file itself.
 
-A .localdata.schema file is required.
+A limitation of localdata files is that currently they can only be loaded into the default dataset of the bqm2 --defaultDataset argument.
 
-A hash of the entire file is used to determine if a reload is necessary.
+A .localdata.schema file is required. This may be shorthand syntax like the bq cli accepts i.e. col1:string,col2:int,... etc OR a json file containing googles bigquery json schema -  https://cloud.google.com/bigquery/docs/schemas#specifying_a_json_schema_file
+
+A hash of the entire file is used to determine if a reload is necessary.  That hash will be stored in the description of the created table.
+
+The dataset where .localdata tables will be stored is in the --defaultDataset of the current bqm2 command.
+
+Another possibility, not recommended, is to name your .localdata file with 3 dot separated portions instead of two.   
+
+For example, naming a .localdata as tmp.foo.localdata will create a table named foo in the tmp dataset.  
+Naming a .localdata foo.localdata will create a table named foo in the --defaultDataset of the bqm2 command.
 
 ### default values used
 - skip_leading_rows is set to 1 by default.  In case of CSV i.e. tab delimited data, be sure to include a header.
@@ -650,7 +666,10 @@ The /int-test sub folders contain many examples of all if not most of the suppor
 
 There is an integration test /int-test/test-basic.sh which is run on pull request of this repo which exercised them all.
 
-# todo
+The /queries/demo1 also has examples
+
+
+#  todo
 
 - dataset is created even in dumpToFolder/verify mode
 - local dev issues
@@ -675,14 +694,14 @@ There is an integration test /int-test/test-basic.sh which is run on pull reques
   - add support for running as current gcp user i.e no need for service account file
   - longer term - add support for redshift
   - add support for declarative definitions of gcs transfer service
-  - add support for declartive definitions of bigquery transfer service
+  - add support for declarative definitions of bigquery transfer service
   - investigate k8s job extension i.e use k8 jobs in same manner as we use bq jobs
   - add extension to define pre-existing tables and establish those as dependencies
   - add .model support - this is a to_api_repr and from_api_repr situation
 
 # known issues
 
-  - The descriptions of tables can end up being too long and interfere with execution and saving of results.  A fix is in the works as of 2022/11/14.
+  - The descriptions of tables can end up being too long and interfere with execution and saving of results.  Any descriptions which end up being too long will be truncated to fit in the allowed table description field.
 
 # script and .queryjobconfig scenarios
 

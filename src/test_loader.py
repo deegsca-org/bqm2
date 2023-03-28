@@ -135,7 +135,7 @@ class Test(unittest.TestCase):
     def test_DelegatingFileLoaderParseInvalidSuffix(self):
         aLoader = FileLoader()
         try:
-            DelegatingFileSuffixLoader(query=aLoader).load("nosuffixfile")
+            DelegatingFileSuffixLoader(query=aLoader).load("nosuffixfile", True)
             self.assertTrue(False, "Should have failed with index error switched to value error")
         except ValueError:
             pass
@@ -143,10 +143,10 @@ class Test(unittest.TestCase):
 
     def test_DelegatingFileLoaderParseSuffix(self):
         aLoader = FileLoader()
-        def f(file):
+        def f(file, dryrun):
             return True
         aLoader.load = f
-        self.assertTrue(DelegatingFileSuffixLoader(query=aLoader).load("nosuffixfile.query"))
+        self.assertTrue(DelegatingFileSuffixLoader(query=aLoader).load("nosuffixfile.query", True))
 
     @mock.patch('google.cloud.bigquery.Client')
     def testParseDataSetTable(self, mock_client: MagicMock):
@@ -173,20 +173,19 @@ class Test(unittest.TestCase):
             pass
 
     def testParseDataSet(self):
-        self.assertEquals(parseDataset("a/b/dataset.suffix"), "dataset")
+        self.assertEqual(parseDataset("a/b/dataset.suffix"), "dataset")
 
     def testParseSchemaString(self):
         expected = [SchemaField("a", "int"), SchemaField("b", "string")]
-        result = loadSchemaFromString("a:int,"
-                                                           "b:string")
-        self.assertEquals(expected, result)
+        result = loadSchemaFromString("a:int,b:string")
+        self.assertEqual(expected, result)
 
     def testParseSchemaJsonString(self):
         # note, we just use any valid json here
         # bq api will bomb out on invalid json
         expected = []
         result = loadSchemaFromString("[]")
-        self.assertEquals(expected, result)
+        self.assertEqual(expected, result)
 
     def testExplodeTemplateVarsArray(self):
         from datetime import datetime, timedelta
@@ -365,17 +364,16 @@ class Test(unittest.TestCase):
             self.BuildJsonField("a", "record",
                                           fields=recordFields,
                                           mode='repeated')]
-        print (json.dumps(jsonFields))
         schema = loadSchemaFromString(json.dumps(jsonFields))
-        expectedStr = "[schemafield('c', 'string', 'repeated', none, (), none), schemafield('a', 'record', 'repeated', none, (schemafield('b', 'float', 'nullable', none, (), none),), none)]"
+        expectedStr = "[schemafield('c', 'string', 'repeated', none, none, (), none), schemafield('a', 'record', 'repeated', none, none, (schemafield('b', 'float', 'nullable', none, none, (), none),), none)]"
 
         actualStr = str(schema).lower()
-        log.info("actual string: " + actualStr)
-        log.info("expect string: " + expectedStr)
-        self.assertEquals(expectedStr.lower(), actualStr)
+        print(expectedStr)
+        print(actualStr)
+        self.assertEqual(expectedStr.lower(), actualStr)
 
-if __name__ == '__main__':
-    import sys
-    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-
-    unittest.main()
+#if __name__ == '__main__':
+#    import sys
+#    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+#
+#    unittest.main()

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import json
 import logging
 import optparse
 from genericpath import isfile
@@ -11,6 +10,8 @@ from time import sleep
 from collections import defaultdict
 
 import sys
+
+import yaml
 from google.cloud import storage
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.job import QueryJobConfig
@@ -22,6 +23,32 @@ from resource import BqJobs
 from google.cloud import bigquery
 
 
+def find_cycles(dependencies: dict):
+    """
+        dependencies: a dict keys point to sets of keys forming a graph
+        return sub keys of dependencies which contain a cycle
+    """
+    while len(dependencies):
+        torm = set()
+        for key in dependencies.keys():
+            if not len(dependencies[key]):
+                torm.add(key)
+
+        if not torm:
+            # these keys have a cycle
+            return set(dependencies.keys())
+
+        # remove keys with no dependencies
+        for key in torm:
+            del dependencies[key]
+
+        # remove removed keys from anyone that depends on it
+        for key in dependencies.keys():
+            dependencies[key] = dependencies[key] - torm
+
+    return set()
+
+
 class DependencyBuilder:
     """
     Dependency builder loads resources from the folders specified.
@@ -30,27 +57,31 @@ class DependencyBuilder:
     def __init__(self, loader):
         self.loader = loader
 
-    def buildDepend(self, folders) -> tuple:
+    def buildDepend(self, folders, dryrun) -> tuple:
         """ folders arg is an array of strings which should point
         at folders containing resource descriptions loadable by
         self.loader """
         resources = {}
-        resourceDependencies = {}
         for folder in folders:
             folder = re.sub("/$", "", folder)
             for name in listdir(folder):
                 file = "/".join([folder, name])
                 if isfile(file) and self.loader.handles(file):
-                    for rsrc in self.loader.load(file):
+                    for rsrc in self.loader.load(file, dryrun):
                         resources[rsrc.key()] = rsrc
 
-            for rsrc in resources.values():
-                resourceDependencies[rsrc.key()] = set([])
+        resourceDependencies = {rsrc.key(): set() for rsrc in resources.values()}
 
-            for rsrc in resources.values():
-                for osrc in resources.values():
-                    if rsrc.dependsOn(osrc):
-                        resourceDependencies[rsrc.key()].add(osrc.key())
+        for rsrc in resources.values():
+            for osrc in resources.values():
+                if rsrc.dependsOn(osrc):
+                    resourceDependencies[rsrc.key()].add(osrc.key())
+
+        copy = {key: set([x for x in resourceDependencies[key]]) for key in resourceDependencies}
+        cycles = find_cycles(copy)
+        if cycles:
+            raise Exception("There are cycles in your templates.  Please make sure "
+                            "your recent changes have not introduced any cycles")
 
         return (resources, resourceDependencies)
 
@@ -72,7 +103,6 @@ class DependencyExecutor:
                 msg = "nothing"
 
             print(k, "depends on", msg)
-
         while len(self.dependencies):
             todel = set([])
             for n in sorted(self.dependencies.keys()):
@@ -302,8 +332,8 @@ if __name__ == "__main__":
                            "the program will exit non-zero")
 
     parser.add_option("--varsFile", dest="varsFile", type=str,
-                      help="A json file whose data can be refered to in "
-                           "view and query templates.  Must be a simple "
+                      help="A json or yaml file whose data can be refered to in "
+                           "view, query, and other templates.  Must be a simple "
                            "dictionary whose values are string, integers, "
                            "or arrays of strings and integers")
 
@@ -321,23 +351,30 @@ if __name__ == "__main__":
     kwargs = {"dataset": options.defaultDataset}
     if options.varsFile:
         with open(options.varsFile) as f:
-            varJson = json.load(f)
+            varJson = yaml.safe_load(f)
             for (k, v) in varJson.items():
                 kwargs[k] = v
 
-    client = Client(**additional_args)
-    if options.defaultProject:
-        client = Client(options.defaultProject, **additional_args)
-        kwargs["project"] = options.defaultProject
-    else:
-        kwargs["project"] = client.project
+    loadClient = None
+    gcsClient = None
+    client = None
+    bqJobs = None
+    kwargs["project"] = options.defaultProject
 
-    loadClient = Client(project=kwargs["project"], **additional_args)
-    gcsClient = storage.Client(project=kwargs["project"])
+    dryrun = False
+    if options.dumpToFolder:
+        dryrun = True
 
-    bqJobs = BqJobs(client)
-    if options.execute:
-        bqJobs.loadTableJobs()
+    if not dryrun:
+        loadClient = Client(project=kwargs["project"], **additional_args)
+        gcsClient = storage.Client(project=kwargs["project"])
+        client = Client(**additional_args)
+        if not options.defaultProject:
+            client = Client(options.defaultProject, **additional_args)
+            kwargs["project"] = client.project
+        bqJobs = BqJobs(client)
+        if options.execute:
+            bqJobs.loadTableJobs()
 
     builder = DependencyBuilder(
         DelegatingFileSuffixLoader(
@@ -374,13 +411,11 @@ if __name__ == "__main__":
                                                       TableType.EXTERNAL_TABLE,
                                                       kwargs))
     )
-
-    (resources, dependencies) = builder.buildDepend(args)
+    (resources, dependencies) = builder.buildDepend(args, dryrun=dryrun)
     executor = DependencyExecutor(resources, dependencies,
                                   maxRetry=options.maxRetry)
     if options.execute:
-        executor.execute(checkFrequency=options.checkFrequency,
-                         maxConcurrent=options.maxConcurrent)
+        executor.execute(checkFrequency=options.checkFrequency, maxConcurrent=options.maxConcurrent)
     elif options.show:
         executor.show()
     elif options.dotml:
@@ -388,6 +423,7 @@ if __name__ == "__main__":
     elif options.dumpToFolder:
         executor.dump(options.dumpToFolder)
     elif options.showJobs:
+        print("showing jobs")
         for j in BqJobs(bigquery.Client(**additional_args)).jobs():
             if j.state in set(['RUNNING', 'PENDING']):
                 print(j.name, j.state, j.errors)

@@ -1,10 +1,10 @@
-FROM python:3.7
+FROM python:3.10
 
 RUN apt-get install -y g++
 RUN pip install --upgrade pip
 ADD /requirements.txt /
 RUN pip install -r /requirements.txt
-ENV PYTHONPATH /python
+ENV PYTHONPATH /src
 RUN apt-get update
 RUN apt-get install -y vim jq unzip
 ADD /root /root
@@ -18,10 +18,8 @@ RUN apt-get install apt-transport-https ca-certificates -y
 RUN apt-get update -y
 RUN apt-get install google-cloud-sdk -y
 
-RUN pip install pytest
-
-ADD /python /python
-ADD /test /test
+ADD /src /src
 ADD /int-test /int-test
+ADD /test.sh /test.sh
 
-RUN /test/test.sh
+RUN /test.sh

@@ -1,20 +1,15 @@
 import unittest
-from unittest.mock import Mock
 
 import mock
-from google.api_core.page_iterator import Iterator
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.dataset import Dataset
-from google.cloud.bigquery.job import QueryJob, SourceFormat, \
-    WriteDisposition
+from google.cloud.bigquery.job import SourceFormat
 from google.cloud.bigquery.table import Table
 
 import resource
 from resource import strictSubstring, \
     BqDatasetBackedResource, BqViewBackedTableResource, \
-    BqQueryBasedResource, BqJobs, BqDataLoadTableResource, \
-    processLoadTableOptions
-import json
+    BqQueryBasedResource, BqDataLoadTableResource
 
 
 class Test(unittest.TestCase):
@@ -236,16 +231,16 @@ group each by id, description, url
     #     it.__iter__ = Mock(return_value=iter([job]))
 
     #     jobs.__loadTableJobs__('running')
-    #     self.assertEquals(jobs.tableToJobMap['p:d:t'], job)
+    #     self.assertEqual(jobs.tableToJobMap['p:d:t'], job)
 
 
     def testDetectSourceFormatForJson(self):
-        self.assertEquals(
+        self.assertEqual(
             SourceFormat.NEWLINE_DELIMITED_JSON,
             BqDataLoadTableResource.detectSourceFormat("[]"))
 
     def testDetectSourceFormatForCsv(self):
-        self.assertEquals(
+        self.assertEqual(
             SourceFormat.CSV,
             BqDataLoadTableResource.detectSourceFormat(
             "a"))
@@ -257,14 +252,14 @@ group each by id, description, url
     #     }
 
     #     processLoadTableOptions(options, sj)
-    #     self.assertEquals(sj.write_disposition, SourceFormat.NEWLINE_DELIMITED_JSON)
+    #     self.assertEqual(sj.write_disposition, SourceFormat.NEWLINE_DELIMITED_JSON)
 
     # @mock.patch('google.cloud.bigquery.job.LoadTableFromStorageJob')
     # def test_HandleLoadTableOptionWriteDisposition(self, sj):
     #     options = {"write_disposition": "WRITE_TRUNCATE"}
 
     #     processLoadTableOptions(options, sj)
-    #     self.assertEquals(sj.write_disposition,
+    #     self.assertEqual(sj.write_disposition,
     #                       WriteDisposition.WRITE_TRUNCATE)
 
     # @mock.patch('google.cloud.bigquery.job.LoadTableFromStorageJob')
@@ -286,5 +281,5 @@ group each by id, description, url
 
 
 
-if __name__ == '__main__':
-    unittest.main()
+#if __name__ == '__main__':
+#    unittest.main()

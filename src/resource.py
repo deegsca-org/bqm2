@@ -182,11 +182,14 @@ class BqDatasetBackedResource(Resource):
         self.bqClient = bqClient
         self.existFlag = False
         self.dataset = None
-        try:
-            self.dataset = bqClient.get_dataset(dataset)
-            self.existFlag = True
-        except NotFound:
-            pass
+        if bqClient:
+            try:
+                self.dataset = bqClient.get_dataset(dataset)
+                self.existFlag = True
+            except NotFound:
+                pass
+        else:
+            self.dataset = dataset
 
     def exists(self):
         return self.dataset is not None
@@ -362,9 +365,9 @@ class BqProcessTableResource(BqTableBasedResource):
         self.table.schema = self.schema
 
         if self.exists():
-            print("Table exists and we're wiping out the description")
-            self.table.description = ""
-            self.bqClient.update_table(self.table, ["description"])
+            print("Table exists and we're wiping it out")
+            table_id = _buildFullyQualifiedTableName_(self.table)
+            self.bqClient.delete_table(table_id, not_found_ok=True)
 
         # we exec
         import os
@@ -902,7 +905,8 @@ def strictSubstring(contained, container):
 class BqQueryBackedTableResource(BqQueryBasedResource):
     def __init__(self, query: str, table: Table,
                  bqClient: Client, queryJob: QueryJob,
-                 queryJobConfig: QueryJobConfig, expiration: None):
+                 queryJobConfig: QueryJobConfig,
+                 expiration: None, location: None):
         super(BqQueryBackedTableResource, self)\
             .__init__(query, table, bqClient)
         self.queryJob = queryJob
@@ -910,6 +914,7 @@ class BqQueryBackedTableResource(BqQueryBasedResource):
             print(f"found running/pending job table: {self.queryJob}")
         self.expiration = expiration
         self.queryJobConfig = queryJobConfig
+        self.location = location
 
     def tableExists(self):
         try:
@@ -928,7 +933,8 @@ class BqQueryBackedTableResource(BqQueryBasedResource):
         self.queryJob = self.bqClient.query(
             self.makeFinalQuery(),
             job_config=self.queryJobConfig,
-            job_id=jobid
+            job_id=jobid,
+            location=self.location
         )
 
         if self.expiration is not None:
@@ -936,10 +942,14 @@ class BqQueryBackedTableResource(BqQueryBasedResource):
                 table_path = ".".join([self.table.project,
                                       self.table.dataset_id,
                                       self.table.table_id])
-                table = self.bqClient.get_table(table_path)
-                table.expires = datetime.now() + timedelta(
-                                      days=self.expiration)
-                self.bqClient.update_table(table, ['expires'])
+                # there can be cases where our table doesn't get created
+                try:
+                    table = self.bqClient.get_table(table_path)
+                    table.expires = datetime.now() + timedelta(
+                                            days=self.expiration)
+                    self.bqClient.update_table(table, ['expires'])
+                except NotFound:
+                    pass
 
             self.queryJob.add_done_callback(done_callback)
 

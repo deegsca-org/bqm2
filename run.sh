@@ -26,8 +26,7 @@ docker run -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud-private-key \
 -v ~/.vimrc:/root/.vimrc \
 -v ${QUERIES}:${MOUNT} \
 --name bqm2 \
--v $(pwd)/python:/python \
--v $(pwd)/test:/test \
+-v $(pwd)/src:/src \
 -v $(pwd)/int-test:/int-test \
 -v ~/.aws:/root/.aws \
 -ti --rm $imagename:$current_commit $@

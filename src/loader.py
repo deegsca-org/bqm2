@@ -1,7 +1,8 @@
-import json
 from json.decoder import JSONDecodeError
 
+import json
 import yaml
+from yaml import YAMLError
 from google.cloud.bigquery import WriteDisposition, QueryJobConfig
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.schema import SchemaField
@@ -49,7 +50,7 @@ class DelegatingFileSuffixLoader(FileLoader):
                 raise ValueError("args must be subclass of FileLoader")
             self.loaders = kwargs
 
-    def load(self, file):
+    def load(self, file, dryrun):
         suffixParts = file.split("/")[-1].split(".")
         if len(suffixParts) == 1:
             raise ValueError(file +
@@ -57,7 +58,7 @@ class DelegatingFileSuffixLoader(FileLoader):
                              str(self.loaders.keys()) + " to be processed"
                              )
         try:
-            return self.loaders[suffixParts[-1]].load(file)
+            return self.loaders[suffixParts[-1]].load(file, dryrun)
         except KeyError:
             raise ValueError("No loader associated with suffix: " +
                              suffixParts[-1])
@@ -232,7 +233,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
             return filestr
 
     def processTemplateVar(self, templateVars: dict, template: str,
-                           filePath: str, mtime: int, out: dict):
+                           filePath: str, mtime: int, out: dict, dryrun=False):
         """
 
         :param templateVars: These are the variables which will be used
@@ -263,18 +264,10 @@ class BqQueryTemplatingFileLoader(FileLoader):
         query = template.format(**templateVars)
         legacySql = "#legacysql" in query.lower()
 
-        table = templateVars['table']
+        table = templateVars['table'].replace('-', '_')
         project = None
         if 'project' in templateVars:
             project = templateVars['project']
-
-        bqTable = self.bqClient.dataset(dataset,
-                                        project=project).table(
-                                            table.replace('-', '_'))
-        # todo - must we really exclude - from table names?
-        key = _buildDataSetTableKey_(bqTable)
-
-        prev = key in out and out[key] or None
 
         # ensure if we have a value for expiration it is an int
         expiration = None
@@ -284,22 +277,55 @@ class BqQueryTemplatingFileLoader(FileLoader):
             except Exception:
                 expiration = None
 
+        project_dryrun = project or "default"
+        dataset_dryrun = dataset or self.defaultVars["dataset"]
+
+        bqDataset_dryrun, bqTable_dryrun = get_dryrun_bq_dataset_table(
+                                                project_dryrun, dataset_dryrun, table)
+
+        key = _buildDataSetTableKey_(bqTable_dryrun)
+        arsrc = BqQueryBackedTableResource([query], bqTable_dryrun,
+                                           self.bqClient,
+                                           queryJob=None,
+                                           queryJobConfig=None,
+                                           expiration=expiration,
+                                           location=templateVars.get('location', None))
+
+        if dryrun:
+            bqTable = bqTable_dryrun
+            bqDataset = BqDatasetBackedResource(bqDataset_dryrun, None)
+        else:
+            bqTable = self.bqClient.dataset(dataset,
+                                            project=project).table(table.replace('-', '_'))
+            bqDataset = cacheDataSet(self.bqClient, bqTable, self.datasets)
+
+        # todo - must we really exclude - from table names?
+        key = _buildDataSetTableKey_(bqTable)
+
+        prev = key in out and out[key] or None
+
         if self.tableType == TableType.TABLE:
-            jT = self.bqJobs.getJobForTable(bqTable, "create")
-            qjobconfig = load_query_job_config(bqTable,
-                                               filePath + ".queryjobconfig",
-                                               templateVars)
-            qjobconfig.use_legacy_sql = legacySql
+            qjobconfig = None
+            jT = None
+            if not dryrun:
+                jT = self.bqJobs.getJobForTable(bqTable, "create")
+                qjobconfig = load_query_job_config(bqTable,
+                                                   filePath + ".queryjobconfig",
+                                                   templateVars)
+                qjobconfig.use_legacy_sql = legacySql
             arsrc = BqQueryBackedTableResource([query], bqTable,
                                                self.bqClient,
                                                queryJob=jT,
                                                queryJobConfig=qjobconfig,
-                                               expiration=expiration)
+                                               expiration=expiration,
+                                               location=templateVars.get('location', None))
             out[key] = arsrc
             # check if there is extraction logic
             # todo: we need to populate the extraction job
             if 'extract' in templateVars:
-                extract_job = self.bqJobs.getJobForTable(bqTable, "extract")
+                extract_job = None
+                if not dryrun:
+                    extract_job = self.bqJobs.getJobForTable(bqTable, "extract")
                 extractRsrc \
                     = BqExtractTableResource(bqTable,
                                              self.bqClient,
@@ -313,7 +339,9 @@ class BqQueryTemplatingFileLoader(FileLoader):
             out[key] = arsrc
 
         elif self.tableType == TableType.TABLE_GCS_LOAD:
-            jT = self.bqJobs.getJobForTable(bqTable, "create")
+            jT = None
+            if not dryrun:
+                jT = self.bqJobs.getJobForTable(bqTable, "create")
 
             schema = None
             if "source_format" not in templateVars:
@@ -340,17 +368,21 @@ class BqQueryTemplatingFileLoader(FileLoader):
                 arsrc = out[key]
                 arsrc.addQuery(query)
             else:
-                qjobconfig = load_query_job_config(bqTable,
-                                                   filePath
-                                                   + ".queryjobconfig",
-                                                   templateVars)
-                qjobconfig.use_legacy_sql = legacySql
-                jT = self.bqJobs.getJobForTable(bqTable, "create")
+                qjobconfig = None
+                jT = None
+                if not dryrun:
+                    qjobconfig = load_query_job_config(bqTable,
+                                                       filePath
+                                                       + ".queryjobconfig",
+                                                       templateVars)
+                    qjobconfig.use_legacy_sql = legacySql
+                    jT = self.bqJobs.getJobForTable(bqTable, "create")
                 arsrc = BqQueryBackedTableResource([query], bqTable,
                                                    self.bqClient,
                                                    queryJob=jT,
                                                    queryJobConfig=qjobconfig,
-                                                   expiration=expiration)
+                                                   expiration=expiration,
+                                                   location=templateVars.get('location', None))
                 out[key] = arsrc
 
         elif self.tableType == TableType.UNION_VIEW:
@@ -363,14 +395,14 @@ class BqQueryTemplatingFileLoader(FileLoader):
                 out[key] = arsrc
 
         elif self.tableType == TableType.BASH_TABLE:
-            jT = self.bqJobs.getJobForTable(bqTable, "create")
+            jT = None
+            if not dryrun:
+                jT = self.bqJobs.getJobForTable(bqTable, "create")
             stripped = self.cached_file_read(filePath + ".schema").strip()
             schema = loadSchemaFromString(stripped)
             # with open(filePath + ".schema") as schemaFile:
             #     schema = loadSchemaFromString(schemaFile.read().strip())
-            arsrc = BqProcessTableResource(query, bqTable, schema,
-                                           self.bqClient,
-                                           job=jT)
+            arsrc = BqProcessTableResource(query, bqTable, schema, self.bqClient, job=jT)
             out[key] = arsrc
         elif self.tableType == TableType.EXTERNAL_TABLE:
             from google.cloud.bigquery import ExternalConfig
@@ -390,6 +422,8 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                     "file for your external table. " +
                                     filePath + ".schema")
 
+            if not project:
+                project = "default"
             bqTable = Table(".".join([project, dataset, table]), schema)
             arsrc = BqExternalTableBasedResource(self.bqClient, bqTable,
                                                  ext_config)
@@ -397,8 +431,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
 
         dsetKey = _buildDataSetKey_(bqTable)
         if dsetKey not in out:
-            out[dsetKey] = cacheDataSet(self.bqClient, bqTable,
-                                        self.datasets)
+            out[dsetKey] = bqDataset
 
         if prev and prev != out[key] and \
                 self.tableType not in set([TableType.UNION_TABLE,
@@ -406,7 +439,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
             raise Exception("Templating generated duplicate "
                             "tables outputs for " + filePath)
 
-    def load(self, filePath):
+    def load(self, filePath, dryrun):
         mtime = getmtime(filePath)
         ret = {}
         with open(filePath) as f:
@@ -427,42 +460,41 @@ class BqQueryTemplatingFileLoader(FileLoader):
             except FileNotFoundError:
                 raise Exception("Please define template vars in a file "
                                 "called " + filePath + ".vars")
-
             for v in templateVars:
-                self.processTemplateVar(v, template, filePath, mtime, ret)
+                self.processTemplateVar(v, template, filePath, mtime, ret, dryrun)
         return ret.values()
 
     def loadLocalVars(self, filePath):
-        localVars = dict()
+        local_vars = dict()
         if filePath \
             and os.path.exists(filePath) \
                 and os.path.isfile(filePath):
             with open(filePath) as f:
-                localVars = json.load(f)
-                if not isinstance(localVars, dict):
+                local_vars = yaml.safe_load(f)
+                if not isinstance(local_vars, dict):
                     raise Exception(
-                        "Must be single json object in "
+                        "Must be single json or yaml object in "
                         + filePath)
-        return localVars
+        return local_vars
 
-    def loadTemplateVars(self, filePath, localVarsPath=None) -> list:
+    def loadTemplateVars(self, filePath) -> list:
         try:
             with open(filePath) as f:
-                templateVarsList = json.loads(f.read())
-                if not isinstance(templateVarsList, list):
+                template_vars_list = yaml.safe_load(f)
+                if not isinstance(template_vars_list, list):
                     raise Exception(
-                        "Must be json list of objects in " + filePath)
-                for definition in templateVarsList:
+                        "Must be json or yaml list of objects in " + filePath)
+                for definition in template_vars_list:
                     if not isinstance(definition, dict):
                         raise Exception(
                             "Must be json list of objects in " + filePath)
 
-                return templateVarsList
+                return template_vars_list
         except FileNotFoundError:
             return [{}]
-        except JSONDecodeError:
-            raise Exception("Problem reading json var list from file: ",
-                            filePath)
+        except (JSONDecodeError, YAMLError) as e:
+            raise Exception("Problem reading json or yaml var list from file: ",
+                            filePath, e)
 
 
 class BqDataFileLoader(FileLoader):
@@ -474,25 +506,51 @@ class BqDataFileLoader(FileLoader):
         self.datasets = {}
         self.bqJobs = bqJobs
 
-    def load(self, filePath):
+    def load(self, filePath, dryrun=False):
         mtime = getmtime(filePath)
         schemaFilePath = filePath + ".schema"
         mtime_schema = getmtime(schemaFilePath)
         mtime = max([mtime, mtime_schema])
-        bqTable = parseDatasetTable(filePath, self.defaultDataset,
-                                    self.bqClient, self.defaultProject)
 
         with open(schemaFilePath) as schemaFile:
             schema = loadSchemaFromString(schemaFile.read().strip())
 
-        jT = self.bqJobs.getJobForTable(bqTable, "create")
+        jT = None
+        if dryrun:
+            project_dryrun = self.defaultProject or "default"
+            dataset_dryrun = self.defaultDataset
+            table_dryrun = filePath.split("/")[-1].split(".")[0].replace('-', '_')
+            bqDataset_dryrun, bqTable_dryrun = get_dryrun_bq_dataset_table(
+                                                project_dryrun, dataset_dryrun, table_dryrun)
+            bqTable = bqTable_dryrun
+            bqDataset = bqDataset_dryrun
+            bqDataset = BqDatasetBackedResource(bqDataset, None)
+
+        else:
+            bqTable = parseDatasetTable(filePath, self.defaultDataset,
+                                        self.bqClient, self.defaultProject)
+            bqDataset = cacheDataSet(self.bqClient, bqTable,
+                                     self.datasets)
+            jT = self.bqJobs.getJobForTable(bqTable, "create")
 
         ret = []
         ret.append(BqDataLoadTableResource(filePath, bqTable, schema,
                                            self.bqClient, jT))
-        ret.append(cacheDataSet(self.bqClient, bqTable,
-                                self.datasets))
+        ret.append(bqDataset)
+
         return ret
+
+
+def get_dryrun_bq_dataset_table(project_dryrun, dataset_dryrun, table_dryrun):
+    bqTable_dryrun = type('Table', (), {})()
+    bqTable_dryrun.table_id = table_dryrun
+    bqTable_dryrun.dataset_id = dataset_dryrun
+    bqTable_dryrun.project = project_dryrun
+
+    bqDataset_dryrun = type('Dataset', (), {})()
+    bqDataset_dryrun.dataset_id = dataset_dryrun
+    bqDataset_dryrun.project = project_dryrun
+    return bqDataset_dryrun, bqTable_dryrun
 
 
 def loadSchemaFromString(schema: str):
