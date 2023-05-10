@@ -9,6 +9,7 @@ class DateFormatHelper:
         """
         self.formats = formats
         self.formats_suffixes = formats_suffixes
+        self.cache = {}
 
         assert len(formats)
         assert len(formats) == len(formats_suffixes)
@@ -16,14 +17,25 @@ class DateFormatHelper:
     def format_date_key(self, k: str, v: str, m: dict):
         if k.endswith(f"_{self.formats_suffixes[0]}") \
                 or k == self.formats_suffixes[0]:
-            for i in range(1, len(self.formats_suffixes)):
-                newkey = k.replace(self.formats_suffixes[0],
-                                   self.formats_suffixes[i])
-                if newkey in m:
+            # given k, v, there's only one set of new k, v which should
+            # go into m.  So we cache them
+            toset = {}
+            if f"{k}:{v}" in self.cache:
+                toset = self.cache[f"{k}:{v}"]
+            else:
+                for i in range(1, len(self.formats_suffixes)):
+                    newkey = k.replace(self.formats_suffixes[0],
+                                       self.formats_suffixes[i])
+
+                    newval = datetime.strptime(v, self.formats[0])\
+                        .strftime(self.formats[i])
+                    toset[newkey] = newval
+
+            for k, v in toset.items():
+                if k in m:
                     continue
-                newval = datetime.strptime(v, self.formats[0])\
-                    .strftime(self.formats[i])
-                m[newkey] = newval
+                m[k] = v
+            self.cache[f"{k}:{v}"] = toset
 
     def show_new_keys(self, keys: list):
         m = set()

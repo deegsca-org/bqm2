@@ -5,6 +5,18 @@ from dateutil.relativedelta import relativedelta
 from date_formatter_helper import helpers
 
 
+def _get_template_key_location(templateKeys: dict):
+    return "/".join(
+        filter(
+            None,
+            [
+                templateKeys.get("folder", ""),
+                templateKeys.get("filename", "")
+            ]
+        )
+    )
+
+
 def evalTmplRecurse(templateKeys: dict):
     """
     We need to potentially format each of the value with some of the
@@ -20,17 +32,24 @@ def evalTmplRecurse(templateKeys: dict):
     usableKeys = {}
 
     helpers.format_all_date_keys(templateKeysCopy)
+    all_keys_needed = set()
 
     for (k, v) in templateKeysCopy.items():
         keys = keysOfTemplate(v)
         if len(keys):
             keysNeeded[k] = keys
+            all_keys_needed.update(keys)
         else:
             # format removes any {.} escaping
             if isinstance(templateKeysCopy[k], str):
                 templateKeysCopy[k] = templateKeysCopy[k].format()
             usableKeys[k] = templateKeysCopy[k]
 
+    missing_keys = all_keys_needed - set(templateKeysCopy.keys())
+    if missing_keys:
+        location = _get_template_key_location(templateKeys)
+        raise Exception(f"template {location} vars: key contains unmapped value " +
+                        str(missing_keys))
     while len(keysNeeded):
         remaining = len(keysNeeded)
         for (k, v) in templateKeysCopy.items():
@@ -43,9 +62,11 @@ def evalTmplRecurse(templateKeys: dict):
                     **usableKeys)
                 usableKeys[k] = templateKeysCopy[k]
                 del keysNeeded[k]
+
         if remaining == len(keysNeeded):
-            raise Exception("template vars: " + str(templateKeys) +
-                            " contains a circular reference")
+            location = _get_template_key_location(templateKeys)
+            raise Exception(f"template {location} vars: " +
+                            str(keysNeeded) + " contains a circular reference")
 
     for k, v in templateKeysCopy.items():
         if k.endswith("_dash2uscore"):
@@ -144,14 +165,33 @@ def explodeTemplate(templateVars: dict):
     # now make maps
     maps = []
     for s in collect:
-        maps.append(dict(s))
-    return maps
+        maps.append(handle_map_of_maps(dict(s)))
+
+    final = []
+    for m in maps:
+        types = set([type(x) for x in m.values()])
+        if list in types:
+            final += explodeTemplate(m)
+        else:
+            final.append(m)
+
+    return final
+
+
+def handle_map_of_maps(m):
+    ret = {}
+    for k, v in m.items():
+        if isinstance(v, dict):
+            ret.update(**dict(v.items()))
+        else:
+            ret[k] = v
+    return ret
 
 
 def makeCombinations(lists: list, out: list, collect: list):
     """
         given a list of lists, generate a list of lists which
-        has all combinations of each element as a a member
+        has all combinations of each element as a member
 
         Example:
             [[a,b], [c,d]] becomes

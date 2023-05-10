@@ -1,0 +1,1 @@
+select *, '{yyyymmdd_dd}' d, '{a}' as acol, '{b}' as bcol from {dataset}.list_actual_{list}

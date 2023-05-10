@@ -6,6 +6,7 @@ import subprocess
 import uuid
 from datetime import datetime, timedelta
 from json.decoder import JSONDecodeError
+import sys
 
 from google.cloud import bigquery
 from google.cloud import storage
@@ -181,7 +182,7 @@ class BqDatasetBackedResource(Resource):
                  bqClient: Client):
         self.bqClient = bqClient
         self.existFlag = False
-        self.dataset = None
+        self.dataset = dataset
         if bqClient:
             try:
                 self.dataset = bqClient.get_dataset(dataset)
@@ -192,7 +193,7 @@ class BqDatasetBackedResource(Resource):
             self.dataset = dataset
 
     def exists(self):
-        return self.dataset is not None
+        return self.existFlag
 
     def updateTime(self):
         """ time in milliseconds.  None if not created """
@@ -206,7 +207,8 @@ class BqDatasetBackedResource(Resource):
         return None
 
     def create(self):
-        self.dataset = self.bqClient.create_dataset(self.datasetReference)
+        self.dataset = self.bqClient.create_dataset(self.dataset)
+        self.existFlag = True
 
     def key(self):
         return self.dataset.dataset_id
@@ -1096,7 +1098,12 @@ def isJobRunning(job):
         return False
 
     job.reload()
-    print(job.job_id, job.state, job.errors or job.error_result)
+    log_stream = sys.stdout
+    job_error = job.error_result or job.errors
+    if job_error is not None:
+        log_stream = sys.stderr
+    print(job.job_id, job.state, job_error, file=log_stream)
+
     return job.running()
 
 

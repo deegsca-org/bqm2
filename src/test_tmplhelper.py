@@ -1,3 +1,4 @@
+import json
 import unittest
 
 from datetime import datetime, timedelta
@@ -15,11 +16,23 @@ class Test(unittest.TestCase):
         self.assertEqual({'a': '{b}'}, evalTmplRecurse(i))
 
     def testEvalTmplRecurseCircular(self):
-        input = {"a": '{b}', 'b': "{a}"}
+        input = {"a": '{b}', 'b': "{a}", 'c': "c"}
         try:
             evalTmplRecurse(input)
             self.assertTrue(False, "We should have blown up")
-        except Exception:
+        except Exception as e:
+            self.assertTrue("circular reference" in str(e),
+                "Should have thrown circular ref error")
+            pass
+
+    def testEvalTmplRecurseUnmapped(self):
+        input = {"a": '{b}', "c": "{a}"}
+        try:
+            evalTmplRecurse(input)
+            self.assertTrue(False, "We should have blown up")
+        except Exception as e:
+            self.assertTrue("unmapped value" in str(e),
+                "Should have thrown unmapped value ref error")
             pass
 
     def testEvalTmplRecurseSimple(self):
@@ -161,6 +174,73 @@ class Test(unittest.TestCase):
         result = explodeTemplate(templateVars)
         self.assertEqual([templateVars], result)
 
+
+    def testExplodeTemplateWithObjectsAsVals(self):
+        templateVars = {
+            "a": ["b", "c"],
+            "d": [
+                {
+                    "e": "f",
+                    "h": "i"
+                },
+                {
+                    "e": "g",
+                    "h": "j"
+                }
+            ]
+        }
+
+        result = explodeTemplate(templateVars)
+        expected = [
+          {
+            "a": "b",
+            "e": "f",
+            "h": "i"
+          },
+          {
+            "a": "b",
+            "e": "g",
+            "h": "j"
+          },
+          {
+            "a": "c",
+            "e": "f",
+            "h": "i"
+          },
+          {
+            "a": "c",
+            "e": "g",
+            "h": "j"
+          }
+        ]
+
+        print(json.dumps(result, indent=2, sort_keys=True))
+        assert result == expected
+
+    def testExplodeTemplateWithObjectsAsValsAndAnArray(self):
+        templateVars = {
+            "d": [
+                {
+                    "e": ["f", "g"],
+                    "h": "i"
+                }
+            ]
+        }
+
+        result = explodeTemplate(templateVars)
+        expected = [
+            {
+                "e": "f",
+                "h": "i"
+            },
+            {
+                "e": "g",
+                "h": "i"
+            }
+        ]
+        #print(json.dumps(result, indent=2, sort_keys=True))
+        assert result == expected
+
     def testExplodeTemplateOneArray(self):
         templateVars = {"table": "{filename}_{keywords_table}",
                         "keywords_table": ["url_kw", "url_kw_title"],
@@ -201,6 +281,31 @@ class Test(unittest.TestCase):
         result = explodeTemplate(
             templateVars)
         result = set(frozendict(x) for x in result)
+        self.assertEqual(expected, result)
+
+    def testBuildTemplateWithEmptyTable(self):
+
+        n = datetime.today()
+        expectedDt = n + timedelta(days=-1)
+        dt = expectedDt.strftime("%Y%m%d")
+        yyyy = expectedDt.strftime("%Y")
+        mm = expectedDt.strftime("%m")
+        dd = expectedDt.strftime("%d")
+        yy = expectedDt.strftime("%y")
+
+        templateVars = {"filename": "fname",
+                        "table": "",
+                        "keywords_table": "url_kw_{yyyymmdd}",
+                        "overlap_threshold": "0.2", "yyyymmdd": -1}
+
+        expected = {'keywords_table': 'url_kw_' + dt, 'filename': 'fname',
+                    'yyyymmdd': dt, 'table': '',
+                    'overlap_threshold': '0.2',
+                    "yyyymmdd_dd": dd,
+                    "yyyymmdd_mm": mm, "yyyymmdd_yy": yy,
+                    "yyyymmdd_yyyy": yyyy}
+
+        result = evalTmplRecurse(explodeTemplate(templateVars)[0])
         self.assertEqual(expected, result)
 
 

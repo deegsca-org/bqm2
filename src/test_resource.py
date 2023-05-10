@@ -4,12 +4,15 @@ import mock
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.dataset import Dataset
 from google.cloud.bigquery.job import SourceFormat
+from google.cloud.bigquery.job import QueryJob
 from google.cloud.bigquery.table import Table
 
 import resource
 from resource import strictSubstring, \
     BqDatasetBackedResource, BqViewBackedTableResource, \
     BqQueryBasedResource, BqDataLoadTableResource
+
+import pytest
 
 
 class Test(unittest.TestCase):
@@ -245,6 +248,18 @@ group each by id, description, url
             BqDataLoadTableResource.detectSourceFormat(
             "a"))
 
+
+    #def test_print_non_error_result_to_stdout(capsys):
+    #gcs_blob_path = "path/of/blob.txt"
+    #gcs_bucket_name = "bucket"
+    #target_s3_prefix = "s3://bucket/prefix/"
+    #operation = main.Operation.copy
+    #expected_msg = f"{operation} gs://bucket/path/of/blob.txt s3://bucket/prefix/blob.txt"
+    #msg = main.build_pubsub_message(gcs_blob_path, gcs_bucket_name, target_s3_prefix, operation)
+    #out, err = capsys.readouterr()
+    #assert expected_msg in out
+
+
     # @mock.patch('google.cloud.bigquery.job.LoadTableFromStorageJob')
     # def test_HandleLoadTableOptionSourceFormat(self, sj):
     #     options = {
@@ -280,6 +295,32 @@ group each by id, description, url
     #         pass
 
 
+def testPrintErrorResultToStderr(capsys):
+    err_msg = "got error"
+    import google.cloud.bigquery.job
+    mock_error_job = mock.create_autospec(google.cloud.bigquery.job.QueryJob)
+    mock_error_job.reload.return_value = None
+    mock_error_job.job_id = "some-random-id"
+    mock_error_job.state = "FAILED"
+    mock_error_job.error_result = err_msg
+    resource.isJobRunning(mock_error_job)
+    out, err = capsys.readouterr()
+    assert err is not None
+    assert not out
+
+
+def testPrintNoErrorResultToStdout(capsys):
+    import google.cloud.bigquery.job
+    mock_error_job = mock.create_autospec(google.cloud.bigquery.job.QueryJob)
+    mock_error_job.reload.return_value = None
+    mock_error_job.job_id = "some-random-id"
+    mock_error_job.state = "DONE"
+    mock_error_job.errors = None
+    mock_error_job.error_result = None
+    resource.isJobRunning(mock_error_job)
+    out, err = capsys.readouterr()
+    assert not err
+    assert out is not None
 
 #if __name__ == '__main__':
 #    unittest.main()

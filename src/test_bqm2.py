@@ -1,7 +1,10 @@
+import optparse
 import unittest
 from collections import defaultdict
+from unittest.mock import patch, mock_open
 
 from bqm2 import DependencyExecutor, find_cycles
+from bqm2 import KVOption
 
 
 class Test(unittest.TestCase):
