@@ -1,7 +1,9 @@
 #!/usr/bin/env python
-
+import json
 import logging
-import optparse
+from optparse import OptionParser
+
+from kvoption import KVOption
 from genericpath import isfile
 from os import listdir
 import re
@@ -9,18 +11,17 @@ from time import sleep
 
 from collections import defaultdict
 
-import sys
-
 import yaml
 from google.cloud import storage
 from google.cloud.bigquery.client import Client
-from google.cloud.bigquery.job import QueryJobConfig
 
 from loader import DelegatingFileSuffixLoader, \
     BqQueryTemplatingFileLoader, BqDataFileLoader, \
     TableType
 from resource import BqJobs
 from google.cloud import bigquery
+
+from google.api_core.exceptions import PreconditionFailed
 
 
 def find_cycles(dependencies: dict):
@@ -195,78 +196,84 @@ class DependencyExecutor:
             we will pause before looping again.
             Check running tasks first to clear them, then others"""
             for n in sorted(todel, key=lambda k: (int(k not in running), k)):
-                # check if it's already running
-                if (self.resources[n].isRunning()):
-                    print(self.resources[n], "already running")
-                    running.add(n)
-                    # continue so we can check other resource statuses
-                    continue
-                else:
-                    running.discard(n)
-                # check if it doesn't exist in bq
-                if not self.resources[n].exists():
-                    # break on max concurrency
-                    if len(running) >= maxConcurrent:
-                        print("max concurrent running already")
-                        # continue so we can check other resource statuses
-                        break
-                    self.handleRetries(retries, n)
-                    # try to create resource
-                    print("executing: because it doesn't exist ", n)
-                    self.resources[n].create()
-                    # confirm resource is actually running
-                    # this prints <job_id> <status> <response>
+                try:
+                    # check if it's already running
                     if (self.resources[n].isRunning()):
+                        print(self.resources[n], "already running")
                         running.add(n)
-                    # continue so we can check other resource statuses
-                    continue
-                # check if the query hash has changed
-                # by checking the description for it
-                elif self.resources[n].shouldUpdate():
-                    # break on max concurrency
-                    if len(running) >= maxConcurrent:
-                        print("max concurrent running already")
                         # continue so we can check other resource statuses
-                        break
-                    self.handleRetries(retries, n)
-                    print("executing: because our definition has changed",
-                          n, self.resources[n])
-                    # recreate resource again
-                    self.resources[n].create()
-                    # confirm resource is running
-                    if (self.resources[n].isRunning()):
-                        running.add(n)
-                    # continue so we can check other resource statuses
-                    continue
-                # check if dependencies were updated more recently than resource
-                # if so, we should regenerate resource since dependencies
-                #     may have changed.
-                elif self.resources[n].updateTime() < depUpdateTimes[n]:
-                    # break on max concurrency
-                    if len(running) >= maxConcurrent:
-                        print("max concurrent running already")
+                        continue
+                    else:
+                        running.discard(n)
+                    # check if it doesn't exist in bq
+                    if not self.resources[n].exists():
+                        # break on max concurrency
+                        if len(running) >= maxConcurrent:
+                            print("max concurrent running already")
+                            # continue so we can check other resource statuses
+                            break
+                        self.handleRetries(retries, n)
+                        # try to create resource
+                        print("executing: because it doesn't exist ", n)
+                        self.resources[n].create()
+                        # confirm resource is actually running
+                        # this prints <job_id> <status> <response>
+                        if (self.resources[n].isRunning()):
+                            running.add(n)
                         # continue so we can check other resource statuses
-                        break
+                        continue
+                    # check if the query hash has changed
+                    # by checking the description for it
+                    elif self.resources[n].shouldUpdate():
+                        # break on max concurrency
+                        if len(running) >= maxConcurrent:
+                            print("max concurrent running already")
+                            # continue so we can check other resource statuses
+                            break
+                        self.handleRetries(retries, n)
+                        print("executing: because our definition has changed",
+                              n, self.resources[n])
+                        # recreate resource again
+                        self.resources[n].create()
+                        # confirm resource is running
+                        if (self.resources[n].isRunning()):
+                            running.add(n)
+                        # continue so we can check other resource statuses
+                        continue
+                    # check if dependencies were updated more recently than resource
+                    # if so, we should regenerate resource since dependencies
+                    #     may have changed.
+                    elif self.resources[n].updateTime() < depUpdateTimes[n]:
+                        # break on max concurrency
+                        if len(running) >= maxConcurrent:
+                            print("max concurrent running already")
+                            # continue so we can check other resource statuses
+                            break
+                        self.handleRetries(retries, n)
+                        print("executing: because our dependencies have "
+                              "changed since we last ran",
+                              n, self.resources[n])
+                        # recreate resource again
+                        self.resources[n].create()
+                        # confirm resource is running
+                        if (self.resources[n].isRunning()):
+                            running.add(n)
+                        # continue so we can check other resource statuses
+                        continue
+                    # otherwise, nothing to do but cleanup
+                    else:
+                        print(self.resources[n],
+                              " resource exists and is up to date")
+                        # delete from dependency dict
+                        del self.dependencies[n]
+                        # remove from running set (if in there)
+                        running.discard(n)
+                        completed.add(n)
+                except PreconditionFailed as e:
+                    print("trapping precondition fail error")
+                    print(e)
                     self.handleRetries(retries, n)
-                    print("executing: because our dependencies have "
-                          "changed since we last ran",
-                          n, self.resources[n])
-                    # recreate resource again
-                    self.resources[n].create()
-                    # confirm resource is running
-                    if (self.resources[n].isRunning()):
-                        running.add(n)
-                    # continue so we can check other resource statuses
                     continue
-                # otherwise, nothing to do but cleanup
-                else:
-                    print(self.resources[n],
-                          " resource exists and is up to date")
-                    # delete from dependency dict
-                    del self.dependencies[n]
-                    # remove from running set (if in there)
-                    running.discard(n)
-                    completed.add(n)
 
             # less n-squared
             if completed:
@@ -286,7 +293,17 @@ class DependencyExecutor:
 
 
 if __name__ == "__main__":
-    parser = optparse.OptionParser("[options] folder[ folder2[...]]")
+    parser = OptionParser("[options] folder[ folder2[...]]")
+    parser.add_option(KVOption(
+        "--var",
+        metavar="KEY=VALUE",
+        help="Define one or more key=value pairs which will be available "
+             "as if they were declared in a global vars file. "
+             "Always takes precedence over any var in global vars. Values may be "
+             "json list. Supported lists are same as list types supported "
+             "in global, local, or template vars files   "
+    ))
+
     parser.add_option("--execute", dest="execute",
                       action="store_true", default=False,
                       help="'execute' mode.  Accepts a list of folders "
@@ -296,7 +313,9 @@ if __name__ == "__main__":
                            "of their dependencies")
     parser.add_option("--dotml", dest="dotml",
                       action="store_true", default=False,
-                      help="Generate dot ml graph of dag of execution")
+                      help="Generate dot ml graph of dag of execution.  "
+                           "For more info on dot and graphviz, "
+                           "checkout https://www.graphviz.org/")
     parser.add_option("--show", dest="show",
                       action="store_true", default=False,
                       help="Show the dependency tree")
@@ -342,36 +361,52 @@ if __name__ == "__main__":
                            "created. i.e. us-east1, us-central1, etc",
                       default="US")
 
+    parser.add_option("--print-global-args",
+                      help="Creates a json output of the parsed global "
+                           "args consumed from the command line",
+                      action="store_true", default=False)
+
     (options, args) = parser.parse_args()
 
     FORMAT = '%(asctime)-15s %(clientip)s %(user)-8s %(message)s'
     logging.basicConfig(format=FORMAT)
 
     additional_args = {'location': options.bqClientLocation}
-    kwargs = {"dataset": options.defaultDataset}
+    kwargs = {}
+    kwargs["dataset"] = options.defaultDataset
+    kwargs["project"] = options.defaultProject
+
+    globalVars = {}
     if options.varsFile:
         with open(options.varsFile) as f:
-            varJson = yaml.safe_load(f)
-            for (k, v) in varJson.items():
-                kwargs[k] = v
+            globalVars = yaml.safe_load(f)
+
+    vars = {}
+    if options.var:
+        vars = options.var
+        # double check that if project is set, it must
+        # be a single val of type string
+        if "project" in vars and type(vars["project"]) != str:
+            raise Exception("if you specify project as a var, it must be a simple string")
+
+    globalVars = {**kwargs, **globalVars, **vars}
 
     loadClient = None
     gcsClient = None
     client = None
     bqJobs = None
-    kwargs["project"] = options.defaultProject
 
     dryrun = False
     if options.dumpToFolder:
         dryrun = True
 
     if not dryrun:
-        loadClient = Client(project=kwargs["project"], **additional_args)
-        gcsClient = storage.Client(project=kwargs["project"])
+        loadClient = Client(project=globalVars["project"], **additional_args)
+        gcsClient = storage.Client(project=globalVars["project"])
         client = Client(**additional_args)
-        if not options.defaultProject:
-            client = Client(options.defaultProject, **additional_args)
-            kwargs["project"] = client.project
+        if not options.defaultProject and not globalVars.get("project", None):
+            client = Client(**additional_args)
+            globalVars["project"] = client.project
         bqJobs = BqJobs(client)
         if options.execute:
             bqJobs.loadTableJobs()
@@ -381,39 +416,45 @@ if __name__ == "__main__":
             uniontable=BqQueryTemplatingFileLoader(client, gcsClient,
                                                    bqJobs,
                                                    TableType.UNION_TABLE,
-                                                   kwargs),
+                                                   globalVars),
             unionview=BqQueryTemplatingFileLoader(client, gcsClient,
                                                   bqJobs,
                                                   TableType.UNION_VIEW,
-                                                  kwargs),
+                                                  globalVars),
             querytemplate=BqQueryTemplatingFileLoader(client, gcsClient,
                                                       bqJobs,
                                                       TableType.TABLE,
-                                                      kwargs),
+                                                      globalVars),
             view=BqQueryTemplatingFileLoader(client, gcsClient,
                                              bqJobs,
                                              TableType.VIEW,
-                                             kwargs),
+                                             globalVars),
+            # TODO: give better control over where localdata files end up
             localdata=BqDataFileLoader(loadClient,
-                                       kwargs['dataset'],
-                                       kwargs['project'],
+                                       globalVars['dataset'],
+                                       globalVars['project'],
                                        bqJobs),
             gcsdata=BqQueryTemplatingFileLoader(client, gcsClient,
                                                 bqJobs,
                                                 TableType.TABLE_GCS_LOAD,
-                                                kwargs),
+                                                globalVars),
             bashtemplate=BqQueryTemplatingFileLoader(loadClient, gcsClient,
                                                      bqJobs,
                                                      TableType.BASH_TABLE,
-                                                     kwargs),
+                                                     globalVars),
             externaltable=BqQueryTemplatingFileLoader(loadClient, gcsClient,
                                                       bqJobs,
                                                       TableType.EXTERNAL_TABLE,
-                                                      kwargs))
+                                                      globalVars))
     )
     (resources, dependencies) = builder.buildDepend(args, dryrun=dryrun)
     executor = DependencyExecutor(resources, dependencies,
                                   maxRetry=options.maxRetry)
+
+    if options.print_global_args:
+        print(json.dumps(globalVars))
+        exit(0)
+
     if options.execute:
         executor.execute(checkFrequency=options.checkFrequency, maxConcurrent=options.maxConcurrent)
     elif options.show:

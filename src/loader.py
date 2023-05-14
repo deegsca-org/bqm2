@@ -3,7 +3,7 @@ from json.decoder import JSONDecodeError
 import json
 import yaml
 from yaml import YAMLError
-from google.cloud.bigquery import WriteDisposition, QueryJobConfig
+from google.cloud.bigquery import WriteDisposition, QueryJobConfig, Dataset
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import Table
@@ -115,11 +115,8 @@ def cacheDataSet(bqClient: Client, bqTable: Table, datasets: dict):
     """
     dsetKey = _buildDataSetKey_(bqTable)
     if dsetKey not in datasets:
-        try:
-            dataset = bqClient.get_dataset(bqTable.dataset_id)
-        except NotFound:
-            dataset = bqClient.create_dataset(bqTable.dataset_id)
-        datasets[dsetKey] = BqDatasetBackedResource(dataset, bqClient)
+        dset = Dataset(".".join([bqTable.project, bqTable.dataset_id]))
+        datasets[dsetKey] = BqDatasetBackedResource(dset, bqClient)
     return datasets[dsetKey]
 
 
@@ -264,7 +261,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
         query = template.format(**templateVars)
         legacySql = "#legacysql" in query.lower()
 
-        table = templateVars['table'].replace('-', '_')
+        table = templateVars['table']
         project = None
         if 'project' in templateVars:
             project = templateVars['project']
@@ -283,20 +280,12 @@ class BqQueryTemplatingFileLoader(FileLoader):
         bqDataset_dryrun, bqTable_dryrun = get_dryrun_bq_dataset_table(
                                                 project_dryrun, dataset_dryrun, table)
 
-        key = _buildDataSetTableKey_(bqTable_dryrun)
-        arsrc = BqQueryBackedTableResource([query], bqTable_dryrun,
-                                           self.bqClient,
-                                           queryJob=None,
-                                           queryJobConfig=None,
-                                           expiration=expiration,
-                                           location=templateVars.get('location', None))
-
         if dryrun:
             bqTable = bqTable_dryrun
             bqDataset = BqDatasetBackedResource(bqDataset_dryrun, None)
         else:
             bqTable = self.bqClient.dataset(dataset,
-                                            project=project).table(table.replace('-', '_'))
+                                            project=project).table(table)
             bqDataset = cacheDataSet(self.bqClient, bqTable, self.datasets)
 
         # todo - must we really exclude - from table names?

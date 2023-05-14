@@ -24,11 +24,19 @@ Usage: [options] folder[ folder2[...]]
 
 Options:
   -h, --help            show this help message and exit
+  --var=KEY=VALUE       Define one or more key=value pairs which will be
+                        available as if they were declared in a global vars
+                        file. Always takes precedence over any var in global
+                        vars. Values may be json list. Supported lists are
+                        same as list types supported in global, local, or
+                        template vars files
   --execute             'execute' mode.  Accepts a list of folders - folder[
                         folder2[...]].Renders the templates found in those
                         folders and executes them in proper order of their
                         dependencies
-  --dotml               Generate dot ml graph of dag of execution
+  --dotml               Generate dot ml graph of dag of execution.  For more
+                        info on dot and graphviz, checkout
+                        https://www.graphviz.org/
   --show                Show the dependency tree
   --dumpToFolder=DUMPTOFOLDER
                         Dump expanded templates to disk to the folder as files
@@ -50,19 +58,21 @@ Options:
   --maxRetry=MAXRETRY   Relevant to 'execute' mode. The maximum retries for
                         any single resource creation. Once this number is hit,
                         the program will exit non-zero
-  --varsFile=VARSFILE   A json or yaml file whose data can be refered to in view and
-                        query templates.  Must be a simple dictionary whose
-                        values are string, integers, or arrays of strings and
-                        integers
+  --varsFile=VARSFILE   A json or yaml file whose data can be refered to in
+                        view, query, and other templates.  Must be a simple
+                        dictionary whose values are string, integers, or
+                        arrays of strings and integers
   --bqClientLocation=BQCLIENTLOCATION
                         The location where datasets will be created. i.e. us-
                         east1, us-central1, etc
+  --print-global-args   Creates a json output of the parsed global args
+                        consumed from the command line
 ```
 
 # Getting Started
 
 The outline of getting started is
-- execute run.sh to build container and get inside it. 
+- execute run.sh to build container and get inside it
 - establish gcp authentication using service account file
 - cd into /queries/demo1
 - run verify.sh
@@ -196,6 +206,67 @@ The .vars files format is json or yaml.  The structure must be an array of objec
   }
 ]
 ```
+
+### local vars files
+A local vars file is a folder level var file just like global vars i.e. a single json or yaml object. The name of the vars file must be 
+``` local.vars ```
+
+### nested arrays of objects
+
+There are times when one needs to be able to generate arbitrary associations between key value sets i.e 
+when a = b then c = d and when a = f , then c = g, etc.  Specifying
+```
+{
+  "a": ["b", "f"]
+  "c": ["d", "g"]
+}
+```
+
+Would generate a cross product and four resulting objects with unwanted associations.
+
+Instead, you can specify arrays of objects as a key value.  For example
+```
+[
+  {
+    "var1": [
+        {
+            "a": "b",
+            "c": "d",
+        },
+        {
+            "a": "f",
+            "c": "g"
+        }
+    ]
+    "var2", "value for var2",
+  }
+]
+```
+
+The resulting objects available for use in your templates are
+```
+{
+    "a": "b",
+    "c": "d",
+    "var2": "value for var2"
+}
+
+{
+    "a": "f",
+    "c": "g",
+    "var2": "value for var2"
+}
+
+Note that var1 is NOT a usable key for any template.  It "drops away" during the expansion.
+```
+
+Nested arrays of objects may be used in 
+- --var arguments as inline json
+- --varsFile files
+- local.vars
+- {template}.vars files
+
+This allows you to have folder level overrides to global vars and or introduce new variables for use in templates at a folder level.  Note that bqm2 does not recurse into folders.
 
 ### special vars
 
@@ -364,7 +435,10 @@ template vars for use based upon the same date sequence.
 
 The global vars file (optional but recommended) is a file containing a single json object or yaml object.
 You can set vars inside this which will be accessible to all templates.
-You may also override global vars within the individal .vars file of your template.
+You may also override global vars with 
+- a --var key and value passed on the command line
+- a folders local vars file 
+- the individal .vars file of your template.
 
 # supported file suffixes
 
@@ -702,6 +776,7 @@ The /queries/demo1 also has examples
 # known issues
 
   - The descriptions of tables can end up being too long and interfere with execution and saving of results.  Any descriptions which end up being too long will be truncated to fit in the allowed table description field.
+  - For --var date type variables, one cant currently pass in an offset i.e. -1, 1, etc.  The value is interpreted as a string and causes a parse failure during startup.
 
 # script and .queryjobconfig scenarios
 

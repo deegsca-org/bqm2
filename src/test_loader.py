@@ -372,6 +372,36 @@ class Test(unittest.TestCase):
         print(actualStr)
         self.assertEqual(expectedStr.lower(), actualStr)
 
+
+
+    @mock.patch('google.cloud.bigquery.Client')
+    @mock.patch('google.cloud.storage.Client')
+    @mock.patch('resource.BqJobs')
+    def testEmptyTableVar(self, bqClient, bqJobs, gcsClient):
+
+        bqClient.dataset('adataset').table('atable').table_id = \
+            'atable'
+        bqClient.dataset('adataset').table('atable').dataset_id = \
+            'adataset'
+        bqClient.dataset('adataset').table('atable').project = 'aproject'
+
+        loader = BqQueryTemplatingFileLoader(bqClient, gcsClient, bqJobs,
+                                             TableType.TABLE,
+                                             {'dataset': 'default',
+                                              'project': 'aproject'})
+        templateVar = {
+            'table': '',
+            'dataset': 'adataset',
+            "foo": "bar",
+
+        }
+        output = {}
+        loader.processTemplateVar(templateVar, "select * from {foo}",
+                              "filepath", 0, output)
+        self.assertTrue(len(output))
+
+
+
 #if __name__ == '__main__':
 #    import sys
 #    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)

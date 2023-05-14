@@ -1,0 +1,16 @@
+{
+  "dataset": "testdataset",
+  "project": "dummyproject",
+  "list": [
+    "a"
+  ],
+  "nested": [
+    {
+      "a": "c"
+    },
+    {
+      "a": "d"
+    }
+  ],
+  "val": "value"
+}

@@ -24,8 +24,6 @@ gsutil cp /int-test/gcsload/parquet_test.parquet gs://${project_id}-bqm2-int-tes
 gsutil cp /int-test/bq/flag gs://${project_id}-bqm2-int-test/flag
 
 dataset=int_test_$(date +%s)
-bq mk $project_id:$dataset
-bq update --default_table_expiration 3600 $project_id:$dataset
 
 echo Dataset for test is ${dataset}
 python -u -m bqm2 --varsFile int-test/global.vars --defaultDataset ${dataset} --execute int-test/bq/ int-test/bq_local_vars/ int-test/queryjobconfig 
@@ -35,4 +33,7 @@ python -u -m bqm2 --varsFile int-test/global.vars --defaultDataset ${dataset} --
 
 # the assertion sub integration test
 
-dataset=${dataset} /int-test/asserts/test.sh
+project=$project_id dataset=${dataset} /int-test/asserts/test.sh
+project=$project_id dataset=${dataset} /int-test/varargs/test.sh
+
+bq rm -r -f ${dataset}
