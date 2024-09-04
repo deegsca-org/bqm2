@@ -16,7 +16,7 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.
 RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
 RUN apt-get install apt-transport-https ca-certificates -y
 RUN apt-get update -y
-RUN apt-get install google-cloud-sdk -y
+RUN apt-get install google-cloud-sdk=440.0.0-0 -y
 
 ADD /src /src
 ADD /int-test /int-test

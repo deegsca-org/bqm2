@@ -12,6 +12,7 @@ import os
 from enum import Enum
 from google.cloud import storage, bigquery
 from google.cloud.exceptions import NotFound
+from google.cloud.bigquery.dataset import Dataset
 
 import tmplhelper
 from resource import BqExternalTableBasedResource
@@ -74,18 +75,16 @@ class DelegatingFileSuffixLoader(FileLoader):
                 "Invalid file for loading: " + file + ". No suffix")
 
 
-def parseDatasetTable(filePath, defaultDataset: str, bqClient: Client,
+def parseDatasetTable(filePath, defaultDataset: str,
                       defaultProject: str) \
         -> Table:
     tokens = filePath.split("/")[-1].split(".")
     if len(tokens) == 3:
-        return bqClient.dataset(tokens[0], project=defaultProject)\
-                       .table(tokens[1])
+        return Dataset(f"{defaultProject}.{tokens[0]}").table(tokens[1])
     elif len(tokens) == 2:  # use default dataset
         if not defaultDataset:
             raise ValueError("Must specify a default dataset")
-        return bqClient.dataset(defaultDataset, project=defaultProject)\
-                       .table(tokens[0])
+        return Dataset(f"{defaultProject}.{defaultDataset}").table(tokens[0])
     elif len(tokens) > 3:
         raise ValueError("Invalid filename: " + filePath +
                          ". File names "
@@ -128,6 +127,8 @@ def load_query_job_config(table, jobconfigpath, templatevars):
         job_config = bigquery.QueryJobConfig()
         job_config.allow_large_results = True
         job_config.flatten_results = False
+        job_config.priority = bigquery.QueryPriority.BATCH
+
         if templatevars.get(IS_SCRIPT_KEY, False) is False:
             job_config.destination = table
             job_config.write_disposition = WriteDisposition.WRITE_TRUNCATE
@@ -496,30 +497,16 @@ class BqDataFileLoader(FileLoader):
         self.bqJobs = bqJobs
 
     def load(self, filePath, dryrun=False):
-        mtime = getmtime(filePath)
         schemaFilePath = filePath + ".schema"
-        mtime_schema = getmtime(schemaFilePath)
-        mtime = max([mtime, mtime_schema])
-
         with open(schemaFilePath) as schemaFile:
             schema = loadSchemaFromString(schemaFile.read().strip())
 
         jT = None
-        if dryrun:
-            project_dryrun = self.defaultProject or "default"
-            dataset_dryrun = self.defaultDataset
-            table_dryrun = filePath.split("/")[-1].split(".")[0].replace('-', '_')
-            bqDataset_dryrun, bqTable_dryrun = get_dryrun_bq_dataset_table(
-                                                project_dryrun, dataset_dryrun, table_dryrun)
-            bqTable = bqTable_dryrun
-            bqDataset = bqDataset_dryrun
-            bqDataset = BqDatasetBackedResource(bqDataset, None)
-
-        else:
-            bqTable = parseDatasetTable(filePath, self.defaultDataset,
-                                        self.bqClient, self.defaultProject)
-            bqDataset = cacheDataSet(self.bqClient, bqTable,
-                                     self.datasets)
+        bqTable = parseDatasetTable(filePath, self.defaultDataset,
+                                    self.defaultProject)
+        bqDataset = cacheDataSet(self.bqClient, bqTable,
+                                 self.datasets)
+        if not dryrun:
             jT = self.bqJobs.getJobForTable(bqTable, "create")
 
         ret = []

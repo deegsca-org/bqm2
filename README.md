@@ -67,6 +67,11 @@ Options:
                         east1, us-central1, etc
   --print-global-args   Creates a json output of the parsed global args
                         consumed from the command line
+  --effective-date-as-isoformat=EFFECTIVE_DATE_AS_ISOFORMAT
+                        Pins the datetime of any date variable generation to
+                        the time supplied
+
+note: if GOOGLE_OAUTH_ACCESS_TOKEN is set in system vars, then bqm2 will use those credentials
 ```
 
 # Getting Started
@@ -93,7 +98,7 @@ You may also export the var above. and then simply run
 
 ``` bash run.sh bash  ```
 
-So what's going on with above?  The run.sh script passes trailing args to the docker container.  So you can run arbitrary commands including ``` python /python/bqm2.py  ``` itself or even ``` ls ``` or ``` pwd ```.
+So what's going on with above?  The run.sh script passes trailing args to the docker container.  So you can run arbitrary commands including ``` python /src/bqm2.py  ``` itself or even ``` ls ``` or ``` pwd ```.
 
 Passing ``` bash ``` as the arg, puts you into the container with a command prompt as shown
 
@@ -157,6 +162,17 @@ What you see output is a DAG of sorts.
 For each of your tables and datasets, it will list what their dependencies are.
 
 If you receive an error while working on your own use case, most likely you've forgetten to define a variable or are missing required files for your resource type.
+
+### /tmp/
+
+verify.sh creates files within the /tmp directory. You will see a file corresponding to each of your tables. Running verify again will overwrite what is in /tmp/ for the same files, but will not remove files for tables you may have deleted. Consider clearing this directory prior to running verify.sh. 
+
+A useful workflow for developing new tables:
+* run verify.sh
+* move files in /tmp/ to another directory such as /old/
+* make changes to query templates
+* run verify again
+* run diff on /old/ and /tmp/ to see the changes
 
 Messages should be specific enough to guide but let us know if they're not and we'll fine tune them.
 
@@ -398,26 +414,63 @@ yields
 respectively.
 
 ### generated date based vars
-In order to support many different formats for date sequences, bqm2 generates template variables representing the year, month, day, and hour components of any of the 3 date base key types
+In order to support different formats for date sequences, bqm2 generates template 
+variables representing the 
+- year e.g 2023
+- month e.g 12
+- 3 char month strings i.e. upper, lower, and camel e.g. DEC, dec, and Dec
+- day e.g 1-31
+- hour e.g 0-23
+
+components of any of the 3 date base key types
 
 - yyyymm
 - yyyymmdd
 - yyyymmddhh
 
-So if foo_yyyymm = -1 and that is 202112 then the generated vars
+So if foo_yyyymm = -1 and that is actually 202112, then the generated vars are
+
 - yyyymm_yyyy = 2021
+- yyyymm_yy = 21
 - yyyymm_mm = 12
+- yyyymm_MMM = DEC
+- yyyymm_mmm = dec
+- yyyymm_Mmm = Dec
+- yyyymm_qm1_mm = 10 (the 1st month of the current quarter)
+- yyyymm_qm2_mm = 11 (the 2nd month of the quarter 1-month prior to yyyymm)
+- yyyymm_qm3_mm = 12 (the 3rd month of the quarter 2-months prior to yyyymm)
+- yyyymm_qm1_yyyy = 2021 (the year of 1st month of the quarter of yyyymmdd)
+- yyyymm_qm2_yyyy = 2020 (the year of the 2nd month of the quarter 1-month prior to yyyymmdd)
+- yyyymm_qm3_yyyy = 2020 (the year of the 3rd month of the quarter 2-months prior to yyyymmdd)
+- yyyymm_qm1_MMM = OCT (the uppercased 3 char 1st month of the current quarter)
+- yyyymm_qm2_MMM = NOV (the uppercased 3 char 2nd month of the quarter 1-month prior to yyyymm)
+- yyyymm_qm3_MMM = DEC (the uppercased 3 char 3rd month of the quarter 2-months prior to yyyymm)
+- yyyymm_qm1_yy = 21 (the last 2 digits of year of 1st month of the quarter of yyyymm)
+- yyyymm_qm2_yy = 20 (the last 2 digits of year of the 2nd month of the quarter 1-month prior to yyyymm)
+- yyyymm_qm3_yy = 20 (the last 2 digits of year of the 3rd month of the quarter 2-months prior to yyyymm)
 
 will also be available for use in templates.
 
 so specifying
-- yyyymmdd = -1 where -1 is 20211231
+- yyyymmdd = -1 where -1 is 20210101
 
 will generate
 - yyyymmdd_yyyy = 2021
 - yyyymmdd_yy = 21
-- yyyymmdd_mm = 11
-- yyyymmdd_dd = 31
+- yyyymmdd_mm = 01
+- yyyymmdd_Mmm = Jan
+- yyyymmdd_MMM = JAN
+- yyyymmdd_mmm = jan
+- yyyymmdd_dd = 01
+- yyyymmdd_qm1_mm = 01 (the 1st month of the quarter of yyyymmdd)
+- yyyymmdd_qm2_mm = 11 (the 2nd month of the quarter 1-month prior to yyyymmdd)
+- yyyymmdd_qm3_mm = 12 (the 3rd month of the quarter 2-months prior to yyyymmdd)
+- yyyymmdd_qm1_yyyy = 2021 (the year of 1st month of the quarter of yyyymmdd)
+- yyyymmdd_qm2_yyyy = 2020 (the year of the 2nd month of the quarter 1-month prior to yyyymmdd)
+- yyyymmdd_qm3_yyyy = 2020 (the year of the 3rd month of the quarter 2-months prior to yyyymmdd)
+- yyyymmdd_qm1_dd = 01 (the day of the 1st month of the quarter of yyyymmdd)
+- yyyymmdd_qm2_dd = 01 (the day of the 2nd month of the quarter 1-month prior to yyyymmdd)
+- yyyymmdd_qm3_dd = 01 (the day of the 3rd month of the quarter 2-month prior to yyyymmdd)
 
 and specifying
 - yyyymmddhh = -1 where -1 is 2021123101
@@ -425,7 +478,11 @@ and specifying
 will generate
 
 - yyyymmddhh_yyyy = 2021
+- yyyymmddhh_yy = 21
 - yyyymmddhh_mm = 11
+- yyyymmddhh_MMM = NOV
+- yyyymmddhh_mmm = nov
+- yyyymmddhh_Mmm = Nov
 - yyyymmddhh_dd = 23
 - yyyymmddhh_hh = 01
 
@@ -480,7 +537,7 @@ And your .vars file is in a file name bar.querytemplate.vars
   }
 ]
 ```
-Then your your generated query will be
+Then your generated query will be
 
 ```
 #standardSQL
@@ -667,7 +724,8 @@ The from_api_repr method is used to load your template
 ## .gcsdata
 These templates allow you to load gcs data into tables.
 
-.gcsdata.schema file is required.
+.gcsdata.schema file is required for all source_formats except those whose schema is included in the
+data files such as parquet and orc.
 
 - json form - https://cloud.google.com/bigquery/docs/schemas#specifying_a_json_schema_file
 or
@@ -682,8 +740,10 @@ or
   - CSV
   - DATASTORE_BACKUP (not tested)
   - NEWLINE_DELIMITED_JSON
-  - ORC
-  - PARQUET
+  - ORC (.schema file not required)
+  - PARQUET (.schema file not required)
+
+note: an advantage .gcsdata templates have over .querytemplate load into files is not requiring a schema file.
 
 - ignore_unknown_values
 Consult google docs however this allows ignoring unknown columns in json or csv
@@ -698,7 +758,7 @@ Consult google docs however this allows ignoring unknown columns in json or csv
 - require_exists - if set, this directive requires that the gcs path specified contains or is at least on gcs blob.
 
 # Directory structure
-## /python
+## /src
 Contains actual python code i.e. bqm2 and others
 
 ## /int-test

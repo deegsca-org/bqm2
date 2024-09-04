@@ -22,6 +22,7 @@ atest2.not_from_local_vars depends on atest2 atest2.table_from_local_vars
 atest2.one depends on atest2 atest2.three atest2.two
 atest2.parquet_upload depends on atest2
 atest2.read_load_thread depends on atest2 atest2.load_three
+atest2.select_from_dash_in_name depends on atest2 atest2.dash-named-table-dash-dash
 atest2.table_from_local_vars depends on atest2
 atest2.test_ab depends on atest2
 atest2.test_cd depends on atest2

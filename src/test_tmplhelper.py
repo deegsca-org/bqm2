@@ -61,25 +61,50 @@ class Test(unittest.TestCase):
 
     def testBuildTemplateFromTemplateVars(self):
 
-        n = datetime.today()
-        expectedDt = n + timedelta(days=-1)
+        n = datetime.strptime("20230914", "%Y%m%d")
+        expectedDt = n
         dt = expectedDt.strftime("%Y%m%d")
         yyyy = expectedDt.strftime("%Y")
         mm = expectedDt.strftime("%m")
         dd = expectedDt.strftime("%d")
         yy = expectedDt.strftime("%y")
+        mmm = expectedDt.strftime("%b").lower()
+        MMM = expectedDt.strftime("%b").upper()
+        Mmm = expectedDt.strftime("%b")
+        m_qm1 = "07"
+        m_qm2 = "08"
+        m_qm3 = "09"
+        y_qm1 = "2023"
+        y_qm2 = "2023"
+        y_qm3 = "2023"
+        d_qm1 = "14"
+        d_qm2 = "14"
+        d_qm3 = "14"
 
         templateVars = {"filename": "fname",
                         "table": "{filename}_{keywords_table}",
                         "keywords_table": "url_kw_{yyyymmdd}",
-                        "overlap_threshold": "0.2", "yyyymmdd": -1}
+                        "overlap_threshold": "0.2", "yyyymmdd": "20230914"}
 
         expected = {'keywords_table': 'url_kw_' + dt, 'filename': 'fname',
                     'yyyymmdd': dt, 'table': 'fname_url_kw_' + dt,
                     'overlap_threshold': '0.2',
                     "yyyymmdd_dd": dd,
                     "yyyymmdd_mm": mm, "yyyymmdd_yy": yy,
-                    "yyyymmdd_yyyy": yyyy}
+                    "yyyymmdd_yyyy": yyyy,
+                    "yyyymmdd_mmm": mmm,
+                    "yyyymmdd_MMM": MMM,
+                    "yyyymmdd_Mmm": Mmm,
+                    "yyyymmdd_qm1_mm": m_qm1,
+                    "yyyymmdd_qm2_mm": m_qm2,
+                    "yyyymmdd_qm3_mm": m_qm3,
+                    "yyyymmdd_qm1_dd": d_qm1,
+                    "yyyymmdd_qm2_dd": d_qm2,
+                    "yyyymmdd_qm3_dd": d_qm3,
+                    "yyyymmdd_qm1_yyyy": y_qm1,
+                    "yyyymmdd_qm2_yyyy": y_qm2,
+                    "yyyymmdd_qm3_yyyy": y_qm3
+                    }
 
         result = evalTmplRecurse(explodeTemplate(templateVars)[0])
         self.assertEqual(expected, result)
@@ -285,29 +310,52 @@ class Test(unittest.TestCase):
 
     def testBuildTemplateWithEmptyTable(self):
 
-        n = datetime.today()
-        expectedDt = n + timedelta(days=-1)
+        n = datetime.strptime("20230914", "%Y%m%d")
+        expectedDt = n
         dt = expectedDt.strftime("%Y%m%d")
         yyyy = expectedDt.strftime("%Y")
         mm = expectedDt.strftime("%m")
         dd = expectedDt.strftime("%d")
         yy = expectedDt.strftime("%y")
+        mmm = expectedDt.strftime("%b").lower()
+        MMM = expectedDt.strftime("%b").upper()
+        Mmm = expectedDt.strftime("%b")
+        m_qm1 = "07"
+        m_qm2 = "08"
+        m_qm3 = "09"
+        y_qm1 = "2023"
+        y_qm2 = "2023"
+        y_qm3 = "2023"
+        d_qm1 = "14"
+        d_qm2 = "14"
+        d_qm3 = "14"
+
 
         templateVars = {"filename": "fname",
                         "table": "",
                         "keywords_table": "url_kw_{yyyymmdd}",
-                        "overlap_threshold": "0.2", "yyyymmdd": -1}
+                        "overlap_threshold": "0.2", "yyyymmdd": "20230914"}
 
         expected = {'keywords_table': 'url_kw_' + dt, 'filename': 'fname',
                     'yyyymmdd': dt, 'table': '',
                     'overlap_threshold': '0.2',
                     "yyyymmdd_dd": dd,
                     "yyyymmdd_mm": mm, "yyyymmdd_yy": yy,
-                    "yyyymmdd_yyyy": yyyy}
+                    "yyyymmdd_yyyy": yyyy,
+                    "yyyymmdd_mmm": mmm,
+                    "yyyymmdd_MMM": MMM,
+                    "yyyymmdd_Mmm": Mmm,
+                    "yyyymmdd_qm1_mm": m_qm1,
+                    "yyyymmdd_qm2_mm": m_qm2,
+                    "yyyymmdd_qm3_mm": m_qm3,
+                    "yyyymmdd_qm1_dd": d_qm1,
+                    "yyyymmdd_qm2_dd": d_qm2,
+                    "yyyymmdd_qm3_dd": d_qm3,
+                    "yyyymmdd_qm1_yyyy": y_qm1,
+                    "yyyymmdd_qm2_yyyy": y_qm2,
+                    "yyyymmdd_qm3_yyyy": y_qm3
+                    }
 
         result = evalTmplRecurse(explodeTemplate(templateVars)[0])
         self.assertEqual(expected, result)
 
-
-#if __name__ == '__main__':
-#    unittest.main()

@@ -31,9 +31,12 @@ python -u -m bqm2 --varsFile int-test/global.vars --defaultDataset ${dataset} --
 echo 'c	d	e' >> int-test/bq/test_local_json_data.localdata
 python -u -m bqm2 --varsFile int-test/global.vars --defaultDataset ${dataset} --execute int-test/bq/ int-test/bq_local_vars/ int-test/queryjobconfig 
 
-# the assertion sub integration test
+# the sub integration tests
 
+project=$project_id dataset=${dataset} /int-test/no-update-time/test.sh
 project=$project_id dataset=${dataset} /int-test/asserts/test.sh
 project=$project_id dataset=${dataset} /int-test/varargs/test.sh
+project=$project_id dataset=${dataset} /int-test/iso-command-line-arg/test.sh
+project=$project_id dataset=${dataset} /int-test/oauth-cmd/test.sh
 
 bq rm -r -f ${dataset}

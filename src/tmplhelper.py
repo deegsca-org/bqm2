@@ -1,8 +1,10 @@
 import string
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-
+from datetime import datetime
 from date_formatter_helper import helpers
+
+start_time = datetime.now()
 
 
 def _get_template_key_location(templateKeys: dict):
@@ -145,7 +147,7 @@ def explodeTemplate(templateVars: dict):
     # check for key with yyyymm, yyyymmdd, or yyyymmddhh
     # and handle it specially
     for (k, v) in templateVars.items():
-        date_vals = handleDateField(datetime.now(), v, k)
+        date_vals = handleDateField(start_time, v, k)
         if date_vals is not None:
             templateVars[k] = date_vals
 

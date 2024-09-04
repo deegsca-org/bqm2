@@ -10,6 +10,7 @@ import mock
 from mock.mock import MagicMock
 import logging
 
+import date_formatter_helper
 from loader import DelegatingFileSuffixLoader, FileLoader, \
     parseDatasetTable, \
     parseDataset, BqQueryTemplatingFileLoader, TableType, loadSchemaFromString
@@ -148,21 +149,16 @@ class Test(unittest.TestCase):
         aLoader.load = f
         self.assertTrue(DelegatingFileSuffixLoader(query=aLoader).load("nosuffixfile.query", True))
 
-    @mock.patch('google.cloud.bigquery.Client')
-    def testParseDataSetTable(self, mock_client: MagicMock):
-        parseDatasetTable("a/b/dataset.table.suffix", "default",
-                              mock_client, "defaultProject")
-        mock_client.dataset.assert_called_with('dataset',
-                                               project="defaultProject")
-        mock_client.dataset().table.assert_called_with('table')
-
-    @mock.patch('google.cloud.bigquery.Client')
-    def testParseDataSetTableWithoutDataset(self, mock_client: MagicMock):
-        parseDatasetTable("a/b/table.suffix", "dataset", mock_client,
+    def testParseDataSetTable(self):
+        ret = parseDatasetTable("a/b/dataset.table.suffix", "default",
                           "defaultProject")
-        mock_client.dataset.assert_called_with('dataset',
-                                               project="defaultProject")
-        mock_client.dataset().table.assert_called_with('table')
+        assert ret.__str__() == "defaultProject.dataset.table"
+
+    def testParseDataSetTableWithoutDataset(self):
+        ret = parseDatasetTable("a/b/table.suffix", "dataset",
+                                "defaultProject")
+
+        assert ret.__str__() == "defaultProject.dataset.table"
 
     @mock.patch('google.cloud.bigquery.Client')
     def testParseDataSetTableWithoutDefaultDataset(self, mock_client):
@@ -190,23 +186,48 @@ class Test(unittest.TestCase):
     def testExplodeTemplateVarsArray(self):
         from datetime import datetime, timedelta
 
-        n = datetime.today()
-        expectedDt = [dt.strftime("%Y%m%d") for dt in [n, n + timedelta(
-                      days=-1)]]
-        expectedY = [dt.strftime("%Y") for dt in [n, n + timedelta(
-            days=-1)]]
-        expectedM = [dt.strftime("%m") for dt in [n, n + timedelta(
-            days=-1)]]
-        expectedD = [dt.strftime("%d") for dt in [n, n + timedelta(
-            days=-1)]]
-        expectedYY = [dt.strftime("%y") for dt in [n, n + timedelta(
-            days=-1)]]
+        base = datetime.strptime("20210203", "%Y%m%d")
+        n = datetime.now()
+        offset = (n - base).days
+        left = n - timedelta(days=offset)
+        right = n - timedelta(days=offset+1)
+
+        expectedDt = [dt.strftime("%Y%m%d") for dt in [left, right]]
+        expectedY = [dt.strftime("%Y") for dt in [left, right]]
+        expectedM = [dt.strftime("%m") for dt in [left, right]]
+        expectedD = [dt.strftime("%d") for dt in [left, right]]
+        expectedYY = [dt.strftime("%y") for dt in [left, right]]
+        expectedmmm = [dt.strftime("%b").lower() for dt in [left, right]]
+        expectedMMM = [dt.strftime("%b").upper() for dt in [left, right]]
+        expectedMmm = [dt.strftime("%b") for dt in [left, right]]
+        expectedq1 = [date_formatter_helper.quarter(dt, 1).strftime("%m") for dt in [left, right]]
+        expectedq2 = [date_formatter_helper.quarter(dt, 2).strftime("%m") for dt in [left, right]]
+        expectedq3 = [date_formatter_helper.quarter(dt, 3).strftime("%m") for dt in [left, right]]
+        expectedq1yyyy = [date_formatter_helper.quarter(dt, 1).strftime("%Y") for dt in [left, right]]
+        expectedq2yyyy = [date_formatter_helper.quarter(dt, 2).strftime("%Y") for dt in [left, right]]
+        expectedq3yyyy = [date_formatter_helper.quarter(dt, 3).strftime("%Y") for dt in [left, right]]
+        expectedq1dd = [date_formatter_helper.quarter(dt, 1).strftime("%d") for dt in [left, right]]
+        expectedq2dd = [date_formatter_helper.quarter(dt, 2).strftime("%d") for dt in [left, right]]
+        expectedq3dd = [date_formatter_helper.quarter(dt, 3).strftime("%d") for dt in [left, right]]
 
         one = {
             "yyyymmdd_yyyy": expectedY[0],
             "yyyymmdd_mm": expectedM[0],
             "yyyymmdd_dd": expectedD[0],
             "yyyymmdd_yy": expectedYY[0],
+            "yyyymmdd_mmm": expectedmmm[0],
+            "yyyymmdd_MMM": expectedMMM[0],
+            "yyyymmdd_Mmm": expectedMmm[0],
+            'yyyymmdd_qm1_mm': expectedq1[0],
+            'yyyymmdd_qm2_mm': expectedq2[0],
+            'yyyymmdd_qm3_mm': expectedq3[0],
+            'yyyymmdd_qm1_yyyy': expectedq1yyyy[0],
+            'yyyymmdd_qm2_yyyy': expectedq2yyyy[0],
+            'yyyymmdd_qm3_yyyy': expectedq3yyyy[0],
+            'yyyymmdd_qm1_dd': expectedq1dd[0],
+            'yyyymmdd_qm2_dd': expectedq2dd[0],
+            'yyyymmdd_qm3_dd': expectedq3dd[0],
+
         }
 
         two = {
@@ -214,11 +235,23 @@ class Test(unittest.TestCase):
             "yyyymmdd_mm": expectedM[1],
             "yyyymmdd_dd": expectedD[1],
             "yyyymmdd_yy": expectedYY[1],
+            "yyyymmdd_mmm": expectedmmm[1],
+            "yyyymmdd_MMM": expectedMMM[1],
+            "yyyymmdd_Mmm": expectedMmm[1],
+            'yyyymmdd_qm1_mm': expectedq1[1],
+            'yyyymmdd_qm2_mm': expectedq2[1],
+            'yyyymmdd_qm3_mm': expectedq3[1],
+            'yyyymmdd_qm1_yyyy': expectedq1yyyy[1],
+            'yyyymmdd_qm2_yyyy': expectedq2yyyy[1],
+            'yyyymmdd_qm3_yyyy': expectedq3yyyy[1],
+            'yyyymmdd_qm1_dd': expectedq1dd[1],
+            'yyyymmdd_qm2_dd': expectedq2dd[1],
+            'yyyymmdd_qm3_dd': expectedq3dd[1],
         }
 
         template = {"folder": "afolder",
                     "foo": "bar_{folder}_{filename}",
-                    "yyyymmdd": [-1, 0]}
+                    "yyyymmdd": [-1 - offset, -offset]}
 
 
         result = BqQueryTemplatingFileLoader\
@@ -233,7 +266,7 @@ class Test(unittest.TestCase):
                     'adataset', 'yyyymmdd': expectedDt[0], 'foo':
                         'bar_afolder_afile', "table": "afile",
                      "project": "aproject", **one}]
-        self.assertEqual(result, expected)
+        self.assertEqual(expected, result)
 
     @mock.patch('google.cloud.bigquery.Client')
     @mock.patch('google.cloud.storage.Client')

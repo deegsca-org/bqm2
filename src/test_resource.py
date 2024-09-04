@@ -1,13 +1,18 @@
+import datetime
 import unittest
 
+import google.cloud.bigquery.dataset
 import mock
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.dataset import Dataset
 from google.cloud.bigquery.job import SourceFormat
 from google.cloud.bigquery.job import QueryJob
 from google.cloud.bigquery.table import Table
+from google.cloud.exceptions import NotFound
 
 import resource
+import pytest
+
 from resource import strictSubstring, \
     BqDatasetBackedResource, BqViewBackedTableResource, \
     BqQueryBasedResource, BqDataLoadTableResource
@@ -20,6 +25,7 @@ class Test(unittest.TestCase):
     def test_getFiltered(self):
         self.assertTrue(resource.getFiltered(".") == ". ")
         self.assertTrue(resource.getFiltered("@") == " ")
+        self.assertTrue(resource.getFiltered("-") == "- ")
 
     def test_strictSubstring(self):
         self.assertTrue(strictSubstring("A", "AA"))
@@ -322,5 +328,37 @@ def testPrintNoErrorResultToStdout(capsys):
     assert not err
     assert out is not None
 
-#if __name__ == '__main__':
-#    unittest.main()
+def testDataSetUpdateTimeWhenDatasetDNE(mocker):
+    client = mocker.MagicMock()
+    client.get_dataset = mocker.MagicMock(side_effect=NotFound("not found"))
+    d = google.cloud.bigquery.dataset.Dataset('project.foo')
+    bdbr = BqDatasetBackedResource(d, client)
+    assert bdbr.updateTime() == None
+
+def testDataSetUpdateTimeWhenDatasetExists(mocker):
+    client = mocker.MagicMock()
+    dset = mocker.MagicMock()
+    created_epoch = 123456789
+    updated_epoch = 223456789
+
+    dset.created = datetime.datetime.fromtimestamp(created_epoch)
+    dset.updated = datetime.datetime.fromtimestamp(updated_epoch)
+
+    client.get_dataset = mocker.MagicMock(return_value=dset)
+    assert client.get_dataset() == dset
+    bdbr = BqDatasetBackedResource(dset, client)
+    assert bdbr.updateTime() == created_epoch * 1000
+
+def test_build_jobid_prefix_key_from_jobid():
+    parts = [
+        ["a", "b", "c"],
+        ["a", "b", "c-b"],
+        ["create", "starbase_delivery_20240701",
+                              "C20230301-B20240801-00003-lr-custom-us-nonexpanded-inds-20240814-031317-monthly"]
+        ]
+
+    actual = [resource.build_jobid_prefix_key_from_jobid(resource.makeJobName(p)) for p in parts]
+    expected = ["-".join(p) for p in parts]
+
+    assert actual == expected
+

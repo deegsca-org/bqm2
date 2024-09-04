@@ -74,14 +74,14 @@ class BqJobs:
                                         state_filter=state)
         while True:
             for t in jiter:
-                print("looking at: ", t.job_id)
+                # print("looking at: ", t.job_id)
                 jobid_prefix = build_jobid_prefix_key_from_jobid(t.job_id)
                 if not jobid_prefix:
                     continue
 
                 if jobid_prefix in self.tableToJobMap:
                     continue
-                print("adding key to map: ", jobid_prefix)
+                # print("adding key to map: ", jobid_prefix)
                 self.tableToJobMap[jobid_prefix] = t
 
             if not jiter.next_page_token:
@@ -109,8 +109,8 @@ def build_jobid_prefix_from_type_and_table(type: str, table: Table):
 
 def build_jobid_prefix_key_from_jobid(jobid: str):
     parts = jobid.split("-")
-    if len(parts) >= 3:
-        return "-".join(parts[:3])
+    if len(parts) >= 8:  # [type, dataset, table, uuid4 parts 1-5]
+        return "-".join(parts[:-5])  # removes last tokens of the uuid4 of the job id
     return None
 
 
@@ -196,13 +196,18 @@ class BqDatasetBackedResource(Resource):
         return self.existFlag
 
     def updateTime(self):
-        """ time in milliseconds.  None if not created """
-        createdTime = self.dataset.modified
-        if createdTime:
+        """
+        time in milliseconds.  None if not created
+
+        We only use created time.  We don't want re-execution
+        to be sensitive to dataset metadata updates.
+
+        """
+        if self.existFlag:
             # replaced %s with %S to avoid "invalid format"
             # calling createdTime.strftime on windows
             # return int(createdTime.strftime("%S")) * 1000
-            return int(createdTime.strftime("%s")) * 1000
+            return int(self.dataset.created.strftime("%s")) * 1000
 
         return None
 
@@ -255,7 +260,7 @@ class BqTableBasedResource(Resource):
     def updateTime(self):
         """ time in milliseconds.  None if not created """
         self.table = self.bqClient.get_table(self.table)
-        createdTime = self.table.modified
+        createdTime = self.table.created
 
         if createdTime:
             return int(createdTime.strftime("%s")) * 1000
@@ -342,20 +347,15 @@ class BqProcessTableResource(BqTableBasedResource):
         m.update(self.query.encode("utf-8"))
         return m.hexdigest()
 
-        return "filehash:" + generate_file_md5(self.file) + ":" + schemahash
-
     def updateTime(self):
         """ time in milliseconds.  None if not created """
         # self.table.reload() # reload was pre-sdk update
         self.table = self.bqClient.get_table(self.table)
 
-        print("created time is ", str(self.table.modified))
-        createdTime = self.table.modified
+        createdTime = self.table.created
         hashtag = self.makeHashTag()
 
         if createdTime:
-
-            print("description is ", self.table.description)
             # hijack this step to update description - ugh - debt supreme
             if not self.table.description:
                 self.table.description = "\n".join(["Do not edit", hashtag])
@@ -367,7 +367,6 @@ class BqProcessTableResource(BqTableBasedResource):
         self.table.schema = self.schema
 
         if self.exists():
-            print("Table exists and we're wiping it out")
             table_id = _buildFullyQualifiedTableName_(self.table)
             self.bqClient.delete_table(table_id, not_found_ok=True)
 
@@ -485,7 +484,7 @@ class BqDataLoadTableResource(BqTableBasedResource):
     def updateTime(self):
         """ time in milliseconds.  None if not created """
         self.table = self.bqClient.get_table(self.table)
-        createdTime = self.table.modified
+        createdTime = self.table.created
 
         hashtag = self.makeHashTag()
 
@@ -501,8 +500,8 @@ class BqDataLoadTableResource(BqTableBasedResource):
         self.table.schema = self.schema
 
         if self.exists():
-            self.table.description = ""
-            self.bqClient.update_table(self.table, ["description"])
+            table_id = _buildFullyQualifiedTableName_(self.table)
+            self.bqClient.delete_table(table_id, not_found_ok=True)
 
         fieldDelimiter = '\t'
         with open(self.file, 'r') as readable:
@@ -785,7 +784,7 @@ class BqQueryBasedResource(BqTableBasedResource):
         """ time in milliseconds.  None if not created """
         self.table = self.bqClient.get_table(self.table)
 
-        createdTime = self.table.modified
+        createdTime = self.table.created
 
         if createdTime:
             # getting even more debt ridden
@@ -894,7 +893,7 @@ class BqViewBackedTableResource(BqQueryBasedResource):
 
 
 def getFiltered(query):
-    return (re.sub('[^0-9a-zA-Z._]+', ' ', query).rstrip() + ' ')
+    return (re.sub('[^0-9a-zA-Z._-]+', ' ', query).rstrip() + ' ')
 
 
 def strictSubstring(contained, container):
@@ -996,7 +995,7 @@ def processExtractTableOptions(options: dict):
         job_config.field_delimiter = options['field_delimiter']
 
     if "print_header" in options:
-        if type(options['print_header']) == 'str':
+        if isinstance(options['print_header'], str):
             raise Exception("print_header value must be a json boolean")
         job_config.print_header = bool(options['print_header'])
 
@@ -1071,26 +1070,11 @@ class BqExtractTableResource(Resource):
 
     def shouldUpdate(self):
         self.table = self.bqClient.get_table(self.table)
-        createdTime = self.table.modified
+        createdTime = self.table.created
         if not createdTime:
             return False
 
         return self.updateTime() < int(createdTime.strftime("%s")) * 1000
-
-
-def export_data_to_gcs(dataset_name, table_name, destination):
-    bigquery_client = Client()
-    dataset = bigquery_client.dataset(dataset_name)
-    table = dataset.table(table_name)
-    job_name = str(uuid.uuid4())
-
-    job = bigquery_client.extract_table_to_storage(
-        job_name, table, destination)
-
-    job.result()  # Wait for job to complete
-
-    print('Exported {}:{} to {}'.format(
-        dataset_name, table_name, destination))
 
 
 def isJobRunning(job):
