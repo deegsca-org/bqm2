@@ -20,3 +20,5 @@ boto3
 pytest
 pytest-cov
 pytest-pep8
+pytest-mock
+pyarrow>=3.0.0

@@ -1,4 +1,11 @@
+import calendar
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+
+def quarter(d: datetime, monthofquarter):
+    assert monthofquarter >= 1 and monthofquarter <= 3
+    return d - relativedelta(months=(d.month - monthofquarter) % 3)
 
 
 class DateFormatHelper:
@@ -27,11 +34,23 @@ class DateFormatHelper:
                     newkey = k.replace(self.formats_suffixes[0],
                                        self.formats_suffixes[i])
 
-                    newval = datetime.strptime(v, self.formats[0])\
-                        .strftime(self.formats[i])
-                    toset[newkey] = newval
+                    toformat = datetime.strptime(v, self.formats[0])
 
-            for k, v in toset.items():
+                    if "_qm1" in self.formats_suffixes[i]:
+                        toformat = quarter(toformat, 1)
+                    elif "_qm2" in self.formats_suffixes[i]:
+                        toformat = quarter(toformat, 2)
+                    elif "_qm3" in self.formats_suffixes[i]:
+                        toformat = quarter(toformat, 3)
+                    newval = toformat.strftime(self.formats[i])
+                    toset[newkey] = (newval, self.formats_suffixes[i])
+
+            for k, vals in toset.items():
+                v, suffix = vals
+                if suffix.endswith("_MMM"):
+                    v = v.upper()
+                elif suffix.endswith("_mmm"):
+                    v = v.lower()
                 if k in m:
                     continue
                 m[k] = v
@@ -78,14 +97,35 @@ class DateFormatHelpers:
 
 helpers = DateFormatHelpers(
     [
-        DateFormatHelper(["%Y%m%d%H", "%Y", "%m", "%d", "%H"],
+        DateFormatHelper(["%Y%m%d%H", "%Y", "%m", "%d", "%H", "%b", "%b", "%b", "%y"],
                          ["yyyymmddhh", "yyyymmddhh_yyyy",
                           "yyyymmddhh_mm", "yyyymmddhh_dd",
-                          "yyyymmddhh_hh"]),
-        DateFormatHelper(["%Y%m%d", "%Y", "%m", "%d", '%y'],
+                          "yyyymmddhh_hh", "yyyymmddhh_mmm",
+                          "yyyymmddhh_MMM", "yyyymmddhh_Mmm", "yyyymmddhh_yy"]),
+
+        DateFormatHelper(["%Y%m%d", "%Y", "%m", "%d", '%y', "%b", "%b", "%b", "%m", "%m", "%m",
+                          "%Y", "%Y", "%Y", "%d", "%d", "%d"],
                          ["yyyymmdd", "yyyymmdd_yyyy",
-                          "yyyymmdd_mm", "yyyymmdd_dd", "yyyymmdd_yy"]),
-        DateFormatHelper(["%Y%m", "%Y", "%m"],
-                         ["yyyymm", "yyyymm_yyyy", "yyyymm_mm"]),
-    ]
+                          "yyyymmdd_mm", "yyyymmdd_dd",
+                          "yyyymmdd_yy", "yyyymmdd_mmm",
+                          "yyyymmdd_MMM", "yyyymmdd_Mmm",
+                          "yyyymmdd_qm1_mm", "yyyymmdd_qm2_mm", "yyyymmdd_qm3_mm",
+                          "yyyymmdd_qm1_yyyy", "yyyymmdd_qm2_yyyy", "yyyymmdd_qm3_yyyy",
+                          "yyyymmdd_qm1_dd", "yyyymmdd_qm2_dd", "yyyymmdd_qm3_dd",
+                          ]),
+
+        DateFormatHelper(["%Y%m", "%Y", "%m", "%b", "%b", "%b", "%y",
+                          "%m", "%m", "%m", "%Y", "%Y", "%Y",
+                          "%y", "%y", "%y", "%b", "%b", "%b",
+                          ],
+                         ["yyyymm", "yyyymm_yyyy",
+                          "yyyymm_mm", "yyyymm_mmm",
+                          "yyyymm_MMM", "yyyymm_Mmm",
+                          "yyyymm_yy",
+                          "yyyymm_qm1_mm", "yyyymm_qm2_mm", "yyyymm_qm3_mm",
+                          "yyyymm_qm1_yyyy", "yyyymm_qm2_yyyy", "yyyymm_qm3_yyyy",
+                          "yyyymm_qm1_yy", "yyyymm_qm2_yy", "yyyymm_qm3_yy",
+                          "yyyymm_qm1_MMM", "yyyymm_qm2_MMM", "yyyymm_qm3_MMM"
+                          ]),
+        ]
 )

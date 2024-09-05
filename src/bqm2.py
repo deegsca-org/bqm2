@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import json
+import os
 import logging
 from optparse import OptionParser
 
@@ -22,6 +23,8 @@ from resource import BqJobs
 from google.cloud import bigquery
 
 from google.api_core.exceptions import PreconditionFailed
+import datetime
+import tmplhelper
 
 
 def find_cycles(dependencies: dict):
@@ -366,12 +369,28 @@ if __name__ == "__main__":
                            "args consumed from the command line",
                       action="store_true", default=False)
 
+    defaultdatestr = datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d')
+    parser.add_option("--effective-date-as-isoformat",
+                      help="Pins the datetime of any date variable generation to the time supplied",
+                      default=defaultdatestr)
+
     (options, args) = parser.parse_args()
+
+    # TODO: add a more oo / cleaner way of propagating this
+    # this freezes the time used to compute relative date strings
+    tmplhelper.start_time = datetime.datetime.fromisoformat(options.effective_date_as_isoformat)
 
     FORMAT = '%(asctime)-15s %(clientip)s %(user)-8s %(message)s'
     logging.basicConfig(format=FORMAT)
 
     additional_args = {'location': options.bqClientLocation}
+    additional_storage_args = {}
+    if 'GOOGLE_OAUTH_ACCESS_TOKEN' in os.environ:
+        import google.oauth2.credentials
+        creds = google.oauth2.credentials.Credentials(os.environ['GOOGLE_OAUTH_ACCESS_TOKEN'])
+        additional_args['credentials'] = creds
+        additional_storage_args['credentials'] = creds
+
     kwargs = {}
     kwargs["dataset"] = options.defaultDataset
     kwargs["project"] = options.defaultProject
@@ -386,7 +405,7 @@ if __name__ == "__main__":
         vars = options.var
         # double check that if project is set, it must
         # be a single val of type string
-        if "project" in vars and type(vars["project"]) != str:
+        if "project" in vars and not isinstance(vars["project"], str):
             raise Exception("if you specify project as a var, it must be a simple string")
 
     globalVars = {**kwargs, **globalVars, **vars}
@@ -402,7 +421,7 @@ if __name__ == "__main__":
 
     if not dryrun:
         loadClient = Client(project=globalVars["project"], **additional_args)
-        gcsClient = storage.Client(project=globalVars["project"])
+        gcsClient = storage.Client(project=globalVars["project"], **additional_storage_args)
         client = Client(**additional_args)
         if not options.defaultProject and not globalVars.get("project", None):
             client = Client(**additional_args)
