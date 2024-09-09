@@ -1,5 +1,6 @@
 import json
 import unittest
+from itertools import repeat
 
 from google.cloud.bigquery.client import Client
 from google.cloud.bigquery.schema import SchemaField
@@ -382,6 +383,30 @@ class Test(unittest.TestCase):
         if fields: ret['fields'] = fields
 
         return ret
+
+    def testMakeJoinTableQuery(self):
+        one = "select 2 col"
+        two = "select 2 col"
+        three = "select 2 col"
+
+        queries = [one, two, three]
+        onusing = [""] + [x for x in repeat("using (col)", len(queries) - 1)]
+        join = [x for x in repeat("join", len(queries) - 1)] + [""]
+
+        stitches = [f"{onusing[x]} {join[x]}".strip() for x in range(len(queries))]
+
+        print (queries)
+        print ([x for x in onusing])
+        print ([x for x in join])
+        print (stitches)
+
+        ret = ["select * from "]
+        for i in range(len(queries)):
+            ret.append(f"({queries[i]})")
+            ret.append(stitches[i])
+
+        print("\n".join(ret))
+
 
     def testSimpleLoadSchemaField(self):
         simpleField = [self.BuildJsonField("a", "float")]

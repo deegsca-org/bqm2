@@ -156,6 +156,8 @@ class TableType(Enum):
     UNION_VIEW = 6
     BASH_TABLE = 7
     EXTERNAL_TABLE = 8
+    JOIN_TABLE = 9
+    JOIN_VIEW = 10
 
 
 class BqQueryTemplatingFileLoader(FileLoader):
@@ -348,7 +350,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                           jT, query, schema,
                                           templateVars)
             out[key] = rsrc
-        elif self.tableType == TableType.UNION_TABLE:
+        elif self.tableType in [TableType.UNION_TABLE, TableType.JOIN_TABLE]:
             # disallow scripts
             if templateVars.get(IS_SCRIPT_KEY, False) is True:
                 raise Exception(f"{IS_SCRIPT_KEY} is not allowed "
@@ -375,7 +377,7 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                                    location=templateVars.get('location', None))
                 out[key] = arsrc
 
-        elif self.tableType == TableType.UNION_VIEW:
+        elif self.tableType in [TableType.UNION_VIEW, TableType.JOIN_VIEW]:
             if key in out:
                 arsrc = out[key]
                 arsrc.addQuery(query)

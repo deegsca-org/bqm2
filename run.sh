@@ -20,9 +20,8 @@ touch ~/.vimrc
 QUERIES=${QUERIES:-$(pwd)/queries}
 MOUNT=${MOUNT:-/queries}
 echo mounting ${QUERIES} to ${MOUNT}.  Set these yourself to override where your queries live and where they are mounted to in the countainer
-docker run -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud-private-key \
+docker run \
 -e AWS_SHARED_CREDENTIALS_FILE=/root/.aws/mfa \
--v ${GOOGLE_APPLICATION_SERVICE_ACCOUNT}:/gcloud-private-key \
 -v ~/.vimrc:/root/.vimrc \
 -v ${QUERIES}:${MOUNT} \
 --name bqm2 \
