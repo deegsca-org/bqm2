@@ -426,8 +426,8 @@ class BqQueryTemplatingFileLoader(FileLoader):
             out[dsetKey] = bqDataset
 
         if prev and prev != out[key] and \
-                self.tableType not in set([TableType.UNION_TABLE,
-                                          TableType.UNION_VIEW]):
+                self.tableType not in {TableType.UNION_TABLE, TableType.UNION_VIEW,
+                                       TableType.JOIN_TABLE, TableType.JOIN_VIEW}:
             raise Exception("Templating generated duplicate "
                             "tables outputs for " + filePath)
 
