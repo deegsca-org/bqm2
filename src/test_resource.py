@@ -13,9 +13,10 @@ from google.cloud.exceptions import NotFound
 import resource
 import pytest
 
+from constants import JOIN_TYPE_KEY, ON_OR_USING_CLAUSE_KEY
 from resource import strictSubstring, \
     BqDatasetBackedResource, BqViewBackedTableResource, \
-    BqQueryBasedResource, BqDataLoadTableResource
+    BqQueryBasedResource, BqDataLoadTableResource, make_join_query
 
 import pytest
 
@@ -362,3 +363,31 @@ def test_build_jobid_prefix_key_from_jobid():
 
     assert actual == expected
 
+def test_make_join_view_with_2():
+    ret = make_join_query(["select 2 col", "select 3 col"], {JOIN_TYPE_KEY: "join",
+                                                    ON_OR_USING_CLAUSE_KEY: "using (col)"})
+
+    expected = """select * from 
+(
+  select 2 col
+)
+join
+(
+  select 3 col
+)
+using (col)"""
+    print(ret)
+    assert  ret == expected
+
+def test_make_join_view_with_1():
+        ret = make_join_query(["select 2 col"], {JOIN_TYPE_KEY: "join",
+                                                               ON_OR_USING_CLAUSE_KEY: "using (col)"})
+
+        expected = """select * from 
+(
+  select 2 col
+)
+"""
+    
+        print(ret)
+        assert ret == expected

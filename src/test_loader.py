@@ -395,11 +395,6 @@ class Test(unittest.TestCase):
 
         stitches = [f"{onusing[x]} {join[x]}".strip() for x in range(len(queries))]
 
-        print (queries)
-        print ([x for x in onusing])
-        print ([x for x in join])
-        print (stitches)
-
         ret = ["select * from "]
         for i in range(len(queries)):
             ret.append(f"({queries[i]})")

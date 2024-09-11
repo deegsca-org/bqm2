@@ -468,7 +468,12 @@ if __name__ == "__main__":
             jointable=BqQueryTemplatingFileLoader(loadClient, gcsClient,
                                                   bqJobs,
                                                   TableType.JOIN_TABLE,
-                                                  globalVars))
+                                                  globalVars),
+            joinview=BqQueryTemplatingFileLoader(loadClient, gcsClient,
+                                                 bqJobs,
+                                                 TableType.JOIN_VIEW,
+                                                 globalVars)
+        )
     )
     (resources, dependencies) = builder.buildDepend(args, dryrun=dryrun)
     executor = DependencyExecutor(resources, dependencies,
