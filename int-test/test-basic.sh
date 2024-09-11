@@ -38,5 +38,6 @@ project=$project_id dataset=${dataset} /int-test/asserts/test.sh
 project=$project_id dataset=${dataset} /int-test/varargs/test.sh
 project=$project_id dataset=${dataset} /int-test/iso-command-line-arg/test.sh
 project=$project_id dataset=${dataset} /int-test/oauth-cmd/test.sh
+project=$project_id dataset=${dataset} /int-test/joins/test.sh
 
 bq rm -r -f ${dataset}

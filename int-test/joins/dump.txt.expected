@@ -1,0 +1,3 @@
+foo depends on nothing
+foo.join_table depends on foo
+foo.join_view depends on foo
