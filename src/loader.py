@@ -367,7 +367,8 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                                    queryJobConfig=qjobconfig,
                                                    expiration=expiration,
                                                    location=templateVars.get('location', None),
-                                                   vars_dict=templateVars)
+                                                   vars_dict=templateVars,
+                                                   table_type=TableType.JOIN_TABLE)
                 out[key] = arsrc
 
         elif self.tableType in [TableType.UNION_VIEW, TableType.JOIN_VIEW]:

@@ -1,4 +1,11 @@
-select 2 col
+select * from 
+(
+  select 2 col
 
-union all
-select 3 col
+)
+join
+(
+  select 3 col
+
+)
+using (col)
