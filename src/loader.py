@@ -9,12 +9,11 @@ from google.cloud.bigquery.schema import SchemaField
 from google.cloud.bigquery.table import Table
 from os.path import getmtime
 import os
-from enum import Enum
 from google.cloud import storage, bigquery
-from google.cloud.exceptions import NotFound
 from google.cloud.bigquery.dataset import Dataset
 
 import tmplhelper
+from constants import ON_OR_USING_CLAUSE_KEY
 from resource import BqExternalTableBasedResource
 from resource import Resource, _buildDataSetKey_, BqDatasetBackedResource, \
     BqJobs, BqQueryBackedTableResource, _buildDataSetTableKey_, \
@@ -22,6 +21,9 @@ from resource import Resource, _buildDataSetKey_, BqDatasetBackedResource, \
     BqExtractTableResource, BqGcsTableLoadResource, BqProcessTableResource
 from tmplhelper import evalTmplRecurse, explodeTemplate
 from date_formatter_helper import helpers
+
+from table_type import TableType
+from constants import ON_OR_USING_CLAUSE_KEY, JOIN_TYPE_KEY
 
 
 class FileLoader:
@@ -145,17 +147,6 @@ def load_query_job_config(table, jobconfigpath, templatevars):
             return job_config
         except Exception as e:
             raise Exception(f"unable to load {jobconfigpath} as yaml", e)
-
-
-class TableType(Enum):
-    VIEW = 1
-    TABLE = 2
-    TABLE_EXTRACT = 3
-    TABLE_GCS_LOAD = 4
-    UNION_TABLE = 5
-    UNION_VIEW = 6
-    BASH_TABLE = 7
-    EXTERNAL_TABLE = 8
 
 
 class BqQueryTemplatingFileLoader(FileLoader):
@@ -348,11 +339,14 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                           jT, query, schema,
                                           templateVars)
             out[key] = rsrc
-        elif self.tableType == TableType.UNION_TABLE:
+        elif self.tableType in [TableType.UNION_TABLE, TableType.JOIN_TABLE]:
             # disallow scripts
             if templateVars.get(IS_SCRIPT_KEY, False) is True:
                 raise Exception(f"{IS_SCRIPT_KEY} is not allowed "
                                 f"for union tables")
+
+            if self.tableType == TableType.JOIN_TABLE:
+                validate_join_vars(templateVars, key)
 
             if key in out:
                 arsrc = out[key]
@@ -372,16 +366,22 @@ class BqQueryTemplatingFileLoader(FileLoader):
                                                    queryJob=jT,
                                                    queryJobConfig=qjobconfig,
                                                    expiration=expiration,
-                                                   location=templateVars.get('location', None))
+                                                   location=templateVars.get('location', None),
+                                                   vars_dict=templateVars,
+                                                   table_type=TableType.JOIN_TABLE)
                 out[key] = arsrc
 
-        elif self.tableType == TableType.UNION_VIEW:
+        elif self.tableType in [TableType.UNION_VIEW, TableType.JOIN_VIEW]:
             if key in out:
                 arsrc = out[key]
                 arsrc.addQuery(query)
             else:
+                # validate presence of required params if we are a JOIN_VIEW
+                if self.tableType == TableType.JOIN_VIEW:
+                    validate_join_vars(templateVars, key)
                 arsrc = BqViewBackedTableResource([query], bqTable,
-                                                  self.bqClient)
+                                                  self.bqClient, vars_dict=templateVars,
+                                                  table_type=self.tableType)
                 out[key] = arsrc
 
         elif self.tableType == TableType.BASH_TABLE:
@@ -424,8 +424,8 @@ class BqQueryTemplatingFileLoader(FileLoader):
             out[dsetKey] = bqDataset
 
         if prev and prev != out[key] and \
-                self.tableType not in set([TableType.UNION_TABLE,
-                                          TableType.UNION_VIEW]):
+                self.tableType not in {TableType.UNION_TABLE, TableType.UNION_VIEW,
+                                       TableType.JOIN_TABLE, TableType.JOIN_VIEW}:
             raise Exception("Templating generated duplicate "
                             "tables outputs for " + filePath)
 
@@ -576,3 +576,10 @@ def loadSchemaField(jsonField: dict):
                        mode=mode,
                        description=description,
                        fields=fields)
+
+
+def validate_join_vars(templateVars: dict, key: str):
+    if not {ON_OR_USING_CLAUSE_KEY, JOIN_TYPE_KEY}.issubset(templateVars):
+        raise Exception(f"Please define both 'on_or_using_clause' "
+                        f"and 'join_type' keys in the vars for file "
+                        f"for table: {key}")

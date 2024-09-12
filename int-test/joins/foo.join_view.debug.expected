@@ -1,0 +1,11 @@
+select * from 
+(
+  select 2 col
+
+)
+join
+(
+  select 3 col
+
+)
+using (col)

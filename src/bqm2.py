@@ -464,7 +464,16 @@ if __name__ == "__main__":
             externaltable=BqQueryTemplatingFileLoader(loadClient, gcsClient,
                                                       bqJobs,
                                                       TableType.EXTERNAL_TABLE,
-                                                      globalVars))
+                                                      globalVars),
+            jointable=BqQueryTemplatingFileLoader(loadClient, gcsClient,
+                                                  bqJobs,
+                                                  TableType.JOIN_TABLE,
+                                                  globalVars),
+            joinview=BqQueryTemplatingFileLoader(loadClient, gcsClient,
+                                                 bqJobs,
+                                                 TableType.JOIN_VIEW,
+                                                 globalVars)
+        )
     )
     (resources, dependencies) = builder.buildDepend(args, dryrun=dryrun)
     executor = DependencyExecutor(resources, dependencies,

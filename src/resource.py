@@ -5,6 +5,7 @@ import re
 import subprocess
 import uuid
 from datetime import datetime, timedelta
+from itertools import repeat
 from json.decoder import JSONDecodeError
 import sys
 
@@ -18,6 +19,9 @@ from google.cloud.bigquery.job import WriteDisposition, \
     Compression, DestinationFormat, _AsyncJob, LoadJob, ExtractJob
 from google.cloud.bigquery.table import Table, TableReference
 from google.cloud.exceptions import NotFound
+
+from constants import ON_OR_USING_CLAUSE_KEY, JOIN_TYPE_KEY
+from table_type import TableType
 
 # max length of description allowed by biquery
 # https://cloud.google.com/bigquery/quotas - found this by updating
@@ -756,13 +760,30 @@ class BqGcsTableLoadResource(BqTableBasedResource):
         return False
 
 
+def make_join_query(queries, vars_dict):
+    onusing = [""] + [x for x in repeat(vars_dict[ON_OR_USING_CLAUSE_KEY], len(queries) - 1)]
+    join = [x for x in repeat(vars_dict[JOIN_TYPE_KEY], len(queries) - 1)] + [""]
+
+    stitches = [f"{onusing[x]} {join[x]}".strip() for x in range(len(queries))]
+
+    ret = ["select * from "]
+    for i in range(len(queries)):
+        ret.append(f"(\n  {queries[i]}\n)")
+        ret.append(stitches[i])
+
+    return "\n".join(ret)
+
+
 class BqQueryBasedResource(BqTableBasedResource):
     """ Base class of query based big query actions """
     def __init__(self, queries: list, table: Table,
-                 bqClient: Client):
+                 bqClient: Client, vars_dict=None,
+                 table_type=None):
         self.queries = queries
         self.table = table
         self.bqClient = bqClient
+        self.vars_dict = vars_dict
+        self.table_type = table_type
 
         if not isinstance(self.queries, list):
             raise Exception("queries must be of type list")
@@ -830,6 +851,7 @@ class BqQueryBasedResource(BqTableBasedResource):
 
         if not hasattr(self, "filtered"):
             self.filtered = getFiltered(self.makeFinalQuery())
+
         if strictSubstring("".join(["", other.key(), " "]), self.filtered):
             return True
 
@@ -847,6 +869,8 @@ class BqQueryBasedResource(BqTableBasedResource):
             self.queries.append(query)
 
     def makeFinalQuery(self):
+        if self.table_type in {TableType.JOIN_TABLE, TableType.JOIN_VIEW}:
+            return make_join_query(self.queries, self.vars_dict)
         return "\nunion all\n".join(self.queries)
 
     def shouldUpdate(self):
@@ -904,10 +928,11 @@ def strictSubstring(contained, container):
 
 
 class BqQueryBackedTableResource(BqQueryBasedResource):
-    def __init__(self, query: str, table: Table,
+    def __init__(self, query: list, table: Table,
                  bqClient: Client, queryJob: QueryJob,
                  queryJobConfig: QueryJobConfig,
-                 expiration: None, location: None):
+                 expiration: None, location: None, vars_dict=None,
+                 table_type=None):
         super(BqQueryBackedTableResource, self)\
             .__init__(query, table, bqClient)
         self.queryJob = queryJob
@@ -916,6 +941,8 @@ class BqQueryBackedTableResource(BqQueryBasedResource):
         self.expiration = expiration
         self.queryJobConfig = queryJobConfig
         self.location = location
+        self.table_type = table_type
+        self.vars_dict = vars_dict
 
     def tableExists(self):
         try:
